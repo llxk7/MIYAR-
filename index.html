@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIYAR | AI Engineering Review & Compliance Platform</title>
+  <meta name="description" content="MIYAR (معيار) — AI-assisted Saudi Building Code (SBC 201 / SBC 801) compliance review and Engineering Objections Court.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='17' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans"', '"IBM Plex Sans Arabic"', 'system-ui', 'sans-serif'],
+            ar: ['"IBM Plex Sans Arabic"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+          },
+          colors: {
+            brand: { 50: '#f0fdfa', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 900: '#134e4a', accent: '#38bdf8' },
+            darkbg: '#0f172a',
+            surface: '#1e293b',
+            surfaceLight: '#334155'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN (pinned) -->
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <!-- Alpine.js CDN (pinned) -->
+  <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+    .blueprint-bg {
+      background-color: #0b1329;
+      background-image: radial-gradient(#1e293b 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+    .scan-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+      box-shadow: 0 0 18px 4px rgba(56, 189, 248, .45);
+      animation: scan 1.6s ease-in-out infinite alternate;
+    }
+    @keyframes scan { from { top: 0%; } to { top: 100%; } }
+    .bbox-pulse::after {
+      content: ''; position: absolute; inset: -6px; border-radius: 10px;
+      border: 2px solid currentColor; opacity: .5; animation: ping 1.8s cubic-bezier(0,0,.2,1) infinite;
+    }
+    @keyframes ping { 75%, 100% { transform: scale(1.08); opacity: 0; } }
+    .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+    .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+    input[type=range].swipe { accent-color: #38bdf8; }
+    .typing span { animation: blink 1.2s infinite both; }
+    .typing span:nth-child(2) { animation-delay: .2s; }
+    .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+  </style>
+</head>
+
+<body class="bg-darkbg text-slate-100 font-sans antialiased min-h-screen flex flex-col" x-data="miyarApp()" x-init="initApp()">
+
+  <!-- ===================== TOP NAVIGATION ===================== -->
+  <header class="bg-surface border-b border-slate-700 px-4 lg:px-6 h-16 flex items-center justify-between sticky top-0 z-40 gap-4">
+    <div class="flex items-center space-x-3 min-w-0">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-brand-600 to-brand-accent flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-brand-500/20 flex-shrink-0">M</div>
+      <div class="min-w-0">
+        <h1 class="font-bold text-lg leading-none tracking-wide text-white flex items-center gap-2">
+          MIYAR <span class="font-ar text-base text-slate-300 font-semibold">معيار</span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-brand-500/20 text-brand-accent border border-brand-500/30 font-medium tracking-normal">AI Platform</span>
+        </h1>
+        <p class="text-xs text-slate-400 truncate hidden sm:block">Saudi Building Code Compliance & Engineering Objections Court</p>
+      </div>
+    </div>
+
+    <div class="hidden xl:flex items-center space-x-5 text-xs bg-darkbg/50 px-4 py-1.5 rounded-full border border-slate-700/60">
+      <span class="flex items-center text-slate-300"><i data-lucide="building" class="w-3.5 h-3.5 mr-1.5 text-brand-accent"></i> Project: <strong class="ml-1 text-white" x-text="project.title"></strong></span>
+      <span class="text-slate-600">|</span>
+      <span class="flex items-center text-slate-300"><i data-lucide="file-check" class="w-3.5 h-3.5 mr-1.5 text-brand-500"></i> Code: <strong class="ml-1 text-white">SBC 201 / SBC 801</strong></span>
+      <span class="text-slate-600">|</span>
+      <span class="flex items-center" :class="audit.running ? 'text-sky-300' : 'text-emerald-400'">
+        <span class="w-2 h-2 rounded-full animate-pulse mr-1.5" :class="audit.running ? 'bg-sky-400' : 'bg-emerald-500'"></span>
+        <span x-text="audit.running ? 'Engine: Auditing…' : 'Demo Engine: Mock'"></span>
+      </span>
+    </div>
+
+    <div class="flex items-center space-x-2 flex-shrink-0">
+      <button @click="activeTab = 'blueprint-upload'" class="px-3 sm:px-4 py-2 bg-sky-500/15 border border-sky-500/40 hover:bg-sky-500/25 text-sky-200 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition"><i data-lucide="upload-cloud" class="w-4 h-4"></i><span>Upload Blueprint</span></button>
+      <button @click="triggerAudit()" :disabled="audit.running" class="px-3 sm:px-4 py-2 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-600 disabled:opacity-60 text-white rounded-lg text-sm font-semibold shadow-lg shadow-brand-500/20 flex items-center transition">
+        <span class="mr-2 flex" :class="audit.running && 'animate-spin'"><i data-lucide="cpu" class="w-4 h-4"></i></span>
+        <span x-text="audit.running ? 'Auditing ' + audit.progress + '%' : 'Re-Run Demo Audit'"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="flex-1 flex flex-col lg:flex-row lg:overflow-hidden lg:h-[calc(100vh-4rem)]">
+
+    <!-- Left rail -->
+    <aside class="lg:w-16 bg-surface border-b lg:border-b-0 lg:border-r border-slate-700/80 flex lg:flex-col items-center justify-around lg:justify-start py-2 lg:py-4 lg:space-y-4">
+      <template x-for="nav in navItems" :key="nav.id">
+        <button @click="activeTab = nav.id" :title="nav.label"
+          :class="activeTab === nav.id ? 'bg-brand-500/20 text-brand-accent lg:border-l-2 border-brand-accent' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
+          class="p-3 rounded-lg transition lg:w-full flex flex-col items-center justify-center relative gap-1">
+          <span class="flex" x-html="iconSvg(nav.icon, 'w-5 h-5')"></span>
+          <span class="text-[9px] font-medium leading-none" x-text="nav.short"></span>
+          <span x-show="nav.id === 'court' && pendingObjections > 0" class="absolute top-1.5 right-2 min-w-[16px] h-4 px-1 bg-rose-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center" x-text="pendingObjections"></span>
+        </button>
+      </template>
+    </aside>
+
+    <!-- ===================== WORKSPACE ===================== -->
+    <section class="flex-1 flex flex-col relative bg-slate-950 min-w-0 lg:overflow-hidden">
+
+      <!-- ============ TAB: BLUEPRINT VIEWER / VIOLATION SPOTTER ============ -->
+      <div x-show="activeTab === 'editor'" class="flex-1 flex flex-col min-h-0">
+        <div class="bg-sky-500/10 border-b border-sky-500/25 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+          <span>هذه الورقة والمخالفات المعروضة بيانات تجريبية، وليست نتيجة فحص مخطط مرفوع.</span>
+          <div class="flex gap-2">
+            <button @click="activeTab = 'blueprint-upload'" class="flex-shrink-0 border border-emerald-500/40 rounded-lg px-2.5 py-1 text-emerald-300 hover:bg-emerald-500/10">ارفع مخططك</button>
+            <button @click="activeTab = 'code-test'" class="flex-shrink-0 border border-sky-500/40 rounded-lg px-2.5 py-1 text-sky-300 hover:bg-sky-500/10">Code Test</button>
+          </div>
+        </div>
+        <div class="min-h-12 bg-surface/60 border-b border-slate-800 px-4 py-2 flex flex-wrap gap-2 items-center justify-between text-xs text-slate-300">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="font-medium text-white flex items-center"><i data-lucide="image" class="w-4 h-4 mr-1.5 text-brand-accent"></i> Sheet A-104: Ground Floor Fire & Egress Strategy</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400">Scale: 1:100</span>
+            <span class="px-2 py-0.5 rounded border font-mono" :class="revApplied ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-400'" x-text="revApplied ? 'Rev 2 · AI-revised' : 'Rev 1 · As submitted'"></span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button @click="toggleLayer('violations')" class="px-2.5 py-1 rounded border text-xs flex items-center space-x-1.5 transition" :class="layers.violations ? 'bg-rose-500/20 border-rose-500/40 text-rose-300' : 'bg-slate-800 border-slate-700 text-slate-400'">
+              <i data-lucide="circle-alert" class="w-3.5 h-3.5"></i><span x-text="'SBC Violations (' + activeViolations.length + ')'"></span>
+            </button>
+            <button @click="toggleLayer('annotations')" class="px-2.5 py-1 rounded border text-xs flex items-center space-x-1.5 transition" :class="layers.annotations ? 'bg-brand-500/20 border-brand-500/40 text-brand-accent' : 'bg-slate-800 border-slate-700 text-slate-400'">
+              <i data-lucide="message-square" class="w-3.5 h-3.5"></i><span>AI Annotations</span>
+            </button>
+            <div class="flex items-center rounded border border-slate-700 bg-slate-800 overflow-hidden">
+              <button @click="zoom = Math.max(0.6, +(zoom - 0.2).toFixed(1))" class="px-2 py-1 hover:bg-slate-700" title="Zoom out"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i></button>
+              <span class="px-1.5 font-mono text-[11px] w-11 text-center" x-text="Math.round(zoom*100) + '%'"></span>
+              <button @click="zoom = Math.min(2, +(zoom + 0.2).toFixed(1))" class="px-2 py-1 hover:bg-slate-700" title="Zoom in"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="flex-1 relative blueprint-bg overflow-auto thin-scroll p-4 lg:p-8 flex items-start xl:items-center justify-center min-h-[360px]">
+          <div class="w-full max-w-5xl transition-transform duration-300 origin-top" :style="`transform: scale(${zoom})`">
+            <div class="relative w-full aspect-[1000/560] rounded-xl border-2 border-slate-700/60 bg-slate-900/90 shadow-2xl overflow-hidden">
+              <svg viewBox="0 0 1000 560" class="absolute inset-0 w-full h-full" x-html="planSvg(revApplied ? 'after' : 'before')"></svg>
+
+              <!-- Violation bounding boxes (coordinates from audit payload bbox [x,y,w,h]) -->
+              <template x-for="v in violations" :key="v.id">
+                <div x-show="layers.violations && isOpen(v) && !audit.running" @click="selectViolation(v.id)"
+                  class="absolute rounded-md border-2 cursor-pointer transition hover:brightness-125"
+                  :class="bboxClass(v) + (selectedViolationId === v.id ? ' bbox-pulse' : '')"
+                  :style="bboxStyle(v.bbox)">
+                  <span class="absolute -top-5 left-0 whitespace-nowrap text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded" :class="sevBadge(v.severity)" x-text="v.id"></span>
+                </div>
+              </template>
+
+              <!-- AI annotations -->
+              <template x-for="(a, i) in annotations" :key="i">
+                <div x-show="layers.annotations && !audit.running" class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none" :style="`left:${a.x/10}%;top:${a.y/5.6}%`">
+                  <div class="flex items-center gap-1 bg-sky-950/80 border border-sky-500/40 text-sky-200 text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-mono whitespace-nowrap shadow">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span x-text="a.text"></span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Compliant zone pin -->
+              <div x-show="!audit.running" class="absolute bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2 py-1 rounded text-[9px] sm:text-[10px] flex items-center" style="left:24%;top:12%">
+                <i data-lucide="circle-check" class="w-3 h-3 mr-1"></i> Zone 01 · SBC 201 Compliant
+              </div>
+
+              <!-- Scanning overlay -->
+              <div x-show="audit.running" x-transition.opacity class="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px]">
+                <div class="scan-line"></div>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(420px,90%)] bg-surface/95 border border-sky-500/40 rounded-xl p-4 shadow-2xl">
+                  <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="font-semibold text-sky-300 flex items-center"><span class="flex mr-1.5 animate-spin"><i data-lucide="loader-circle" class="w-4 h-4"></i></span> POST /api/v1/audit/analyze</span>
+                    <span class="font-mono text-sky-200" x-text="audit.progress + '%'"></span>
+                  </div>
+                  <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3"><div class="h-full bg-gradient-to-r from-brand-500 to-brand-accent transition-all duration-300" :style="`width:${audit.progress}%`"></div></div>
+                  <ul class="space-y-1 font-mono text-[11px]">
+                    <template x-for="(s, i) in audit.steps" :key="i">
+                      <li class="flex items-center gap-2" :class="i < audit.stepIndex ? 'text-emerald-300' : (i === audit.stepIndex ? 'text-sky-200' : 'text-slate-600')">
+                        <span x-text="i < audit.stepIndex ? '✓' : (i === audit.stepIndex ? '›' : '·')"></span><span x-text="s"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Title block -->
+              <div class="absolute bottom-0 inset-x-0 flex justify-between items-end px-3 py-1.5 border-t border-slate-700/80 bg-slate-900/80 text-[9px] sm:text-[10px] text-slate-400">
+                <div>CONSULTANT: SAUDI ENGINEERING GROUP · A-104</div>
+                <div class="font-mono" :class="score === 100 ? 'text-emerald-300' : 'text-brand-accent'" x-text="score === 100 ? 'SBC-2026-AUTOMATED-VERIFIED ✓' : 'SBC-2026-AUTOMATED-REVIEW · ' + activeViolations.length + ' OPEN'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected violation inspector -->
+        <div class="border-t border-slate-800 bg-surface/70 px-4 py-3" x-show="selectedViolation">
+          <template x-if="selectedViolation">
+            <div class="flex flex-col xl:flex-row gap-4 text-xs">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2 py-0.5 text-[10px] font-bold rounded border" :class="sevBadge(selectedViolation.severity)" x-text="selectedViolation.severity"></span>
+                  <span class="font-mono text-slate-400" x-text="selectedViolation.clause"></span>
+                  <span class="px-2 py-0.5 text-[10px] rounded border" :class="statusBadge(selectedViolation.status)" x-text="statusLabel(selectedViolation.status)"></span>
+                </div>
+                <h3 class="text-sm font-semibold text-white mt-1.5"><span x-text="selectedViolation.title"></span> <span class="font-ar text-slate-400 font-normal" x-text="'· ' + selectedViolation.titleAr"></span></h3>
+                <blockquote class="mt-2 border-l-2 border-brand-accent/60 pl-3 text-slate-300 italic" x-text="selectedViolation.citation"></blockquote>
+              </div>
+              <div class="flex gap-3 xl:w-[420px]">
+                <div class="flex-1 bg-darkbg rounded-lg border border-slate-700 p-2.5">
+                  <div class="text-[10px] text-slate-500 uppercase tracking-wider">Measured</div>
+                  <div class="font-mono text-rose-300 text-base font-bold" x-text="selectedViolation.measured"></div>
+                </div>
+                <div class="flex-1 bg-darkbg rounded-lg border border-slate-700 p-2.5">
+                  <div class="text-[10px] text-slate-500 uppercase tracking-wider">Required</div>
+                  <div class="font-mono text-emerald-300 text-base font-bold" x-text="selectedViolation.required"></div>
+                </div>
+                <div class="flex flex-col gap-1.5 justify-center">
+                  <button @click="askAbout(selectedViolation)" class="px-3 py-1.5 rounded-md bg-brand-500/15 border border-brand-500/40 text-brand-accent hover:bg-brand-500/25 flex items-center whitespace-nowrap"><i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1"></i> Ask Copilot</button>
+                  <button @click="openObjectionModal(selectedViolation.id)" class="px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 hover:bg-slate-700 flex items-center whitespace-nowrap"><i data-lucide="scale" class="w-3.5 h-3.5 mr-1"></i> Object</button>
+                  <button @click="activeTab = 'diff'; activeChange = changes.find(c => c.violationId === selectedViolation.id)?.n || 1" class="px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 hover:bg-slate-700 flex items-center whitespace-nowrap"><i data-lucide="git-compare" class="w-3.5 h-3.5 mr-1"></i> View fix</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ============ TAB: ENGINEERING OBJECTIONS COURT ============ -->
+      <div x-show="activeTab === 'court'" x-cloak class="flex-1 overflow-y-auto thin-scroll p-4 lg:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-accent"><i data-lucide="gavel" class="w-6 h-6"></i></div>
+            <div>
+              <h2 class="text-lg font-bold text-white leading-tight">Engineering Objections Court <span class="font-ar text-slate-300 font-semibold">· محكمة الاعتراضات الهندسية</span></h2>
+              <p class="text-xs text-slate-400">Structured technical disputes, AI-evaluated, decided by a certified human reviewer.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <div class="px-3 py-1.5 rounded-lg bg-surface border border-slate-700"><span class="text-slate-400">Docket:</span> <strong class="text-white" x-text="objections.length"></strong></div>
+            <div class="px-3 py-1.5 rounded-lg bg-surface border border-slate-700"><span class="text-slate-400">Pending:</span> <strong class="text-amber-300" x-text="pendingObjections"></strong></div>
+            <button @click="openObjectionModal(selectedViolationId)" class="px-4 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-brand-500 text-white font-semibold flex items-center shadow-md shadow-brand-500/20"><i data-lucide="file-plus-2" class="w-4 h-4 mr-1.5"></i> File Objection</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-5">
+          <!-- Docket -->
+          <div class="space-y-3">
+            <h3 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Case Docket</h3>
+            <template x-for="o in objections" :key="o.id">
+              <button @click="selectedObjectionId = o.id" class="w-full text-left p-3.5 rounded-xl border transition"
+                :class="selectedObjectionId === o.id ? 'bg-slate-800 border-brand-accent shadow-md shadow-sky-500/10' : 'bg-surface/70 border-slate-700/80 hover:border-slate-600'">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono text-[11px] text-slate-300" x-text="o.id"></span>
+                  <span class="px-2 py-0.5 text-[10px] font-bold rounded border" :class="objStatusBadge(o.status)" x-text="o.status.replace('_',' ')"></span>
+                </div>
+                <div class="text-xs font-semibold text-white mt-1.5" x-text="violationById(o.violationId)?.title"></div>
+                <div class="text-[11px] text-slate-400 mt-0.5"><span x-text="o.violationId"></span> · <span x-text="o.basis"></span></div>
+                <div class="mt-2.5 flex items-center gap-2">
+                  <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden"><div class="h-full rounded-full" :class="probColor(o.ai.probability, 'bg')" :style="`width:${o.ai.probability}%`"></div></div>
+                  <span class="font-mono text-[11px]" :class="probColor(o.ai.probability, 'text')" x-text="o.ai.probability + '%'"></span>
+                </div>
+              </button>
+            </template>
+          </div>
+
+          <!-- Case file -->
+          <template x-if="selectedObjection">
+            <div class="space-y-5">
+              <div class="bg-surface border border-slate-700 rounded-2xl p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div class="text-[11px] text-slate-400 font-mono" x-text="'CASE ' + selectedObjection.id + ' · filed ' + selectedObjection.submittedAt"></div>
+                    <h3 class="text-base font-bold text-white mt-1" x-text="violationById(selectedObjection.violationId)?.title"></h3>
+                    <div class="text-xs text-slate-400 mt-0.5"><span class="font-mono" x-text="violationById(selectedObjection.violationId)?.clause"></span> · Petitioner: <span class="text-slate-200" x-text="selectedObjection.engineer"></span></div>
+                  </div>
+                  <span class="px-2.5 py-1 text-[11px] font-bold rounded-lg border" :class="objStatusBadge(selectedObjection.status)" x-text="selectedObjection.status.replace('_',' ')"></span>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 mt-4 text-xs">
+                  <div class="bg-darkbg rounded-xl border border-slate-700 p-3.5">
+                    <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1.5">Technical basis · <span class="text-slate-300 normal-case" x-text="selectedObjection.basis"></span></div>
+                    <p class="text-slate-200 leading-relaxed" x-text="selectedObjection.reason"></p>
+                  </div>
+                  <div class="bg-darkbg rounded-xl border border-slate-700 p-3.5 space-y-2">
+                    <div class="text-[10px] uppercase tracking-wider text-slate-500">Supporting calculation</div>
+                    <div class="flex justify-between"><span class="text-slate-400">Method / reference</span><span class="text-slate-100 font-mono text-right" x-text="selectedObjection.calcMethod || '—'"></span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Claimed equivalent value</span><span class="text-emerald-300 font-mono" x-text="selectedObjection.calcValue || '—'"></span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Code requirement</span><span class="text-rose-300 font-mono" x-text="violationById(selectedObjection.violationId)?.required"></span></div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-700/60">
+                      <span class="text-slate-400">Evidence</span>
+                      <span class="flex items-center text-sky-300" x-show="selectedObjection.attachment"><i data-lucide="paperclip" class="w-3.5 h-3.5 mr-1"></i><span x-text="selectedObjection.attachment"></span></span>
+                      <span class="text-slate-500" x-show="!selectedObjection.attachment">No attachment</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI evaluation -->
+              <div class="bg-surface border border-brand-500/30 rounded-2xl p-5">
+                <div class="flex items-center gap-2 text-brand-accent font-semibold text-sm mb-4"><i data-lucide="cpu" class="w-4 h-4"></i> AI Evaluation & Decision Recommendation</div>
+                <div x-show="selectedObjection.status === 'SUBMITTED'" class="flex items-center gap-3 text-xs text-sky-200 py-6 justify-center">
+                  <span class="flex animate-spin"><i data-lucide="loader-circle" class="w-5 h-5"></i></span> Evaluating calculations against SBC precedent library…
+                </div>
+                <div x-show="selectedObjection.status !== 'SUBMITTED'" class="grid md:grid-cols-[150px_1fr] gap-5 items-center">
+                  <div class="flex flex-col items-center gap-2">
+                    <div class="relative w-32 h-32">
+                    <svg viewBox="0 0 120 120" class="w-32 h-32 -rotate-90">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="10"/>
+                      <circle cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round" :stroke="probHex(selectedObjection.ai.probability)" stroke-dasharray="314.16" :stroke-dashoffset="314.16 * (1 - selectedObjection.ai.probability / 100)" style="transition: stroke-dashoffset .8s"/>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <div class="text-2xl font-bold" :class="probColor(selectedObjection.ai.probability, 'text')" x-text="selectedObjection.ai.probability + '%'"></div>
+                      <div class="text-[9px] text-slate-400 uppercase tracking-wider">acceptance</div>
+                    </div>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded border text-center" :class="probBadge(selectedObjection.ai.probability)" x-text="selectedObjection.ai.label"></span>
+                  </div>
+                  <div class="space-y-2.5 text-xs">
+                    <template x-for="c in selectedObjection.ai.criteria" :key="c.name">
+                      <div>
+                        <div class="flex justify-between mb-1"><span class="text-slate-300" x-text="c.name"></span><span class="font-mono text-slate-400" x-text="c.score + ' · w' + c.w"></span></div>
+                        <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-700" :class="probColor(c.score, 'bg')" :style="`width:${c.score}%`"></div></div>
+                      </div>
+                    </template>
+                    <div class="mt-3 p-3 rounded-lg bg-brand-500/10 border border-brand-500/30 text-slate-200 leading-relaxed">
+                      <span class="font-semibold text-brand-accent">Recommendation: <span x-text="selectedObjection.ai.recommendation.replaceAll('_',' ')"></span>.</span>
+                      <span x-text="selectedObjection.ai.summary"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-5">
+                <!-- Timeline -->
+                <div class="bg-surface border border-slate-700 rounded-2xl p-5">
+                  <div class="text-sm font-semibold text-white mb-3 flex items-center"><i data-lucide="history" class="w-4 h-4 mr-1.5 text-slate-400"></i> Case Timeline</div>
+                  <ol class="relative border-l border-slate-700 ml-1.5 space-y-3">
+                    <template x-for="(t, i) in selectedObjection.timeline" :key="i">
+                      <li class="ml-4 text-xs">
+                        <span class="absolute -left-[5px] mt-1 w-2.5 h-2.5 rounded-full bg-brand-accent ring-4 ring-surface"></span>
+                        <div class="text-slate-500 font-mono text-[10px]" x-text="t.at"></div>
+                        <div class="text-slate-200" x-text="t.label"></div>
+                      </li>
+                    </template>
+                  </ol>
+                </div>
+
+                <!-- Reviewer decision -->
+                <div class="bg-surface border border-slate-700 rounded-2xl p-5 text-xs">
+                  <div class="text-sm font-semibold text-white mb-3 flex items-center"><i data-lucide="user-check" class="w-4 h-4 mr-1.5 text-slate-400"></i> Human Reviewer Decision</div>
+                  <div x-show="['ACCEPTED','REJECTED'].includes(selectedObjection.status)" class="p-3 rounded-lg border" :class="selectedObjection.status === 'ACCEPTED' ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-rose-500/10 border-rose-500/40'">
+                    <div class="font-bold" :class="selectedObjection.status === 'ACCEPTED' ? 'text-emerald-300' : 'text-rose-300'" x-text="selectedObjection.status === 'ACCEPTED' ? 'Objection upheld — violation waived' : 'Objection dismissed — violation stands'"></div>
+                    <p class="text-slate-300 mt-1" x-text="selectedObjection.reviewerNotes"></p>
+                    <div class="text-[10px] text-slate-500 mt-2 font-mono">Reviewer: Eng. Noura Al-Qahtani · SBC Certified #SA-4471</div>
+                  </div>
+                  <div x-show="!['ACCEPTED','REJECTED'].includes(selectedObjection.status)">
+                    <label class="block text-slate-400 mb-1">Decision notes</label>
+                    <textarea x-model="reviewerNotes" rows="3" placeholder="e.g. Accepted subject to installation of the UL-listed assembly and third-party inspection…" class="w-full bg-darkbg border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-brand-accent"></textarea>
+                    <div class="flex gap-2 mt-3">
+                      <button @click="decide('ACCEPTED')" :disabled="selectedObjection.status === 'SUBMITTED'" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold flex items-center justify-center"><i data-lucide="check" class="w-4 h-4 mr-1"></i> Accept</button>
+                      <button @click="decide('REJECTED')" :disabled="selectedObjection.status === 'SUBMITTED'" class="flex-1 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-semibold flex items-center justify-center"><i data-lucide="x" class="w-4 h-4 mr-1"></i> Reject</button>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2">The AI recommendation is advisory. Final authority rests with the certified reviewer.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ============ TAB: VERSION DIFF VIEWER ============ -->
+      <div x-show="activeTab === 'diff'" x-cloak class="flex-1 overflow-y-auto thin-scroll p-4 lg:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center"><i data-lucide="git-compare" class="w-5 h-5 mr-2 text-brand-accent"></i> Version Difference Viewer</h2>
+            <p class="text-xs text-slate-400">Sheet A-104 · Rev 1 (as submitted) vs Rev 2 (AI compliance suggestions). Click a pin to inspect a change.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <div class="flex rounded-lg border border-slate-700 overflow-hidden">
+              <button @click="diffMode = 'split'" class="px-3 py-1.5 flex items-center" :class="diffMode === 'split' ? 'bg-brand-500/20 text-brand-accent' : 'bg-surface text-slate-400'"><i data-lucide="columns-2" class="w-3.5 h-3.5 mr-1"></i> Side-by-side</button>
+              <button @click="diffMode = 'swipe'" class="px-3 py-1.5 flex items-center" :class="diffMode === 'swipe' ? 'bg-brand-500/20 text-brand-accent' : 'bg-surface text-slate-400'"><i data-lucide="square-split-horizontal" class="w-3.5 h-3.5 mr-1"></i> Swipe</button>
+            </div>
+            <button x-show="!revApplied" @click="adoptRevision()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-brand-500 text-white font-semibold flex items-center shadow-md shadow-brand-500/20"><i data-lucide="check-check" class="w-4 h-4 mr-1.5"></i> Adopt Rev 2</button>
+            <button x-show="revApplied" @click="revertRevision()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-semibold flex items-center"><i data-lucide="undo-2" class="w-4 h-4 mr-1.5"></i> Revert to Rev 1</button>
+          </div>
+        </div>
+
+        <!-- Split mode -->
+        <div x-show="diffMode === 'split'" class="grid md:grid-cols-2 gap-4">
+          <template x-for="side in ['before','after']" :key="side">
+            <div class="rounded-xl border overflow-hidden" :class="side === 'before' ? 'border-rose-500/30' : 'border-emerald-500/30'">
+              <div class="px-3 py-2 text-xs flex items-center justify-between" :class="side === 'before' ? 'bg-rose-950/30 text-rose-200' : 'bg-emerald-950/30 text-emerald-200'">
+                <span class="font-semibold" x-text="side === 'before' ? 'Rev 1 · As submitted' : 'Rev 2 · AI-suggested'"></span>
+                <span class="font-mono text-[10px]" x-text="side === 'before' ? 'score ' + baseScore : 'score 100 (projected)'"></span>
+              </div>
+              <div class="relative aspect-[1000/560] bg-slate-900 blueprint-bg">
+                <svg viewBox="0 0 1000 560" class="absolute inset-0 w-full h-full" x-html="planSvg(side)"></svg>
+                <template x-for="c in changes" :key="c.n">
+                  <button @click="activeChange = c.n" @mouseenter="hoverChange = c.n" @mouseleave="hoverChange = null"
+                    class="absolute -translate-x-1/2 -translate-y-full flex flex-col items-center group" :style="`left:${c.x/10}%;top:${c.y/5.6}%`">
+                    <span class="w-6 h-6 rounded-full rounded-bl-none -rotate-45 flex items-center justify-center text-[10px] font-bold text-white shadow-lg transition ring-2"
+                      :class="(side === 'before' ? 'bg-rose-500 ring-rose-300/40' : 'bg-emerald-500 ring-emerald-300/40') + ((activeChange === c.n || hoverChange === c.n) ? ' scale-125 ring-white' : '')">
+                      <span class="rotate-45" x-text="c.n"></span>
+                    </span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Swipe mode -->
+        <div x-show="diffMode === 'swipe'" class="max-w-5xl mx-auto">
+          <div class="relative aspect-[1000/560] rounded-xl overflow-hidden border border-slate-700 bg-slate-900 select-none">
+            <svg viewBox="0 0 1000 560" class="absolute inset-0 w-full h-full" x-html="planSvg('before')"></svg>
+            <div class="absolute inset-0" :style="`clip-path: inset(0 0 0 ${swipe}%)`">
+              <svg viewBox="0 0 1000 560" class="absolute inset-0 w-full h-full bg-slate-900" x-html="planSvg('after')"></svg>
+            </div>
+            <div class="absolute inset-y-0 w-0.5 bg-brand-accent shadow-[0_0_12px_#38bdf8] pointer-events-none" :style="`left:${swipe}%`">
+              <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-brand-accent text-slate-900 flex items-center justify-center"><i data-lucide="move-horizontal" class="w-4 h-4"></i></div>
+            </div>
+            <span class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded bg-rose-950/80 text-rose-200 border border-rose-500/40">Rev 1</span>
+            <span class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-200 border border-emerald-500/40">Rev 2</span>
+            <template x-for="c in changes" :key="c.n">
+              <button @click="activeChange = c.n" class="absolute -translate-x-1/2 -translate-y-full" :style="`left:${c.x/10}%;top:${c.y/5.6}%`">
+                <span class="w-6 h-6 rounded-full rounded-bl-none -rotate-45 flex items-center justify-center text-[10px] font-bold text-white shadow-lg ring-2 transition"
+                  :class="(c.x/10 < swipe ? 'bg-rose-500 ring-rose-300/40' : 'bg-emerald-500 ring-emerald-300/40') + (activeChange === c.n ? ' scale-125 ring-white' : '')">
+                  <span class="rotate-45" x-text="c.n"></span>
+                </span>
+              </button>
+            </template>
+          </div>
+          <input type="range" min="0" max="100" x-model.number="swipe" class="swipe w-full mt-3">
+        </div>
+
+        <!-- Change list -->
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
+          <template x-for="c in changes" :key="c.n">
+            <button @click="activeChange = c.n" @mouseenter="hoverChange = c.n" @mouseleave="hoverChange = null"
+              class="text-left p-3.5 rounded-xl border transition text-xs"
+              :class="activeChange === c.n ? 'bg-slate-800 border-brand-accent' : 'bg-surface/70 border-slate-700 hover:border-slate-600'">
+              <div class="flex items-center justify-between">
+                <span class="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center" x-text="c.n"></span>
+                <span class="font-mono text-[10px] text-slate-400" x-text="'resolves ' + c.violationId"></span>
+              </div>
+              <div class="font-semibold text-white mt-2" x-text="c.title"></div>
+              <div class="mt-1 text-slate-300 font-mono text-[11px]" x-text="c.delta"></div>
+              <div class="mt-2 pt-2 border-t border-slate-700/60 text-slate-400 text-[11px]" x-text="c.impact"></div>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- ============ TAB: AUDIT REPORTS ============ -->
+      <div x-show="activeTab === 'reports'" x-cloak class="flex-1 overflow-y-auto thin-scroll p-4 lg:p-6 space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center"><i data-lucide="file-text" class="w-5 h-5 mr-2 text-brand-accent"></i> Audit Report & API Console</h2>
+            <p class="text-xs text-slate-400" x-text="project.title + ' · ' + project.building_type + ' · ' + project.location_gis"></p>
+          </div>
+          <button @click="exportReport()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-xs font-semibold flex items-center"><i data-lucide="download" class="w-4 h-4 mr-1.5"></i> Export audit JSON</button>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-surface border border-slate-700 rounded-xl p-4"><div class="text-[11px] text-slate-400">Compliance score</div><div class="text-2xl font-bold mt-1" :class="scoreColor" x-text="score + ' / 100'"></div></div>
+          <div class="bg-surface border border-slate-700 rounded-xl p-4"><div class="text-[11px] text-slate-400">Open violations</div><div class="text-2xl font-bold mt-1 text-rose-300" x-text="violations.filter(v => v.status === 'OPEN').length"></div></div>
+          <div class="bg-surface border border-slate-700 rounded-xl p-4"><div class="text-[11px] text-slate-400">Under objection</div><div class="text-2xl font-bold mt-1 text-violet-300" x-text="violations.filter(v => v.status === 'UNDER_OBJECTION').length"></div></div>
+          <div class="bg-surface border border-slate-700 rounded-xl p-4"><div class="text-[11px] text-slate-400">Resolved / waived</div><div class="text-2xl font-bold mt-1 text-emerald-300" x-text="violations.filter(v => ['RESOLVED','WAIVED'].includes(v.status)).length"></div></div>
+        </div>
+
+        <div class="bg-surface border border-slate-700 rounded-xl overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="text-slate-400 text-[10px] uppercase tracking-wider bg-darkbg/50">
+              <tr><th class="text-left px-4 py-2.5">ID</th><th class="text-left px-4 py-2.5">Clause</th><th class="text-left px-4 py-2.5">Finding</th><th class="text-left px-4 py-2.5">Severity</th><th class="text-left px-4 py-2.5">BBox [x,y,w,h]</th><th class="text-left px-4 py-2.5">Status</th></tr>
+            </thead>
+            <tbody>
+              <template x-for="v in violations" :key="v.id">
+                <tr class="border-t border-slate-700/60 hover:bg-slate-800/50 cursor-pointer" @click="selectViolation(v.id); activeTab = 'editor'">
+                  <td class="px-4 py-2.5 font-mono text-slate-300" x-text="v.id"></td>
+                  <td class="px-4 py-2.5 font-mono text-slate-400 whitespace-nowrap" x-text="v.clause"></td>
+                  <td class="px-4 py-2.5 text-white" x-text="v.title"></td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 text-[10px] font-bold rounded border" :class="sevBadge(v.severity)" x-text="v.severity"></span></td>
+                  <td class="px-4 py-2.5 font-mono text-slate-400" x-text="JSON.stringify(v.bbox)"></td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 text-[10px] rounded border whitespace-nowrap" :class="statusBadge(v.status)" x-text="statusLabel(v.status)"></span></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid xl:grid-cols-[320px_1fr] gap-4">
+          <div class="bg-surface border border-slate-700 rounded-xl p-3">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1 mb-2">API call log (simulated)</div>
+            <div class="space-y-1.5 max-h-80 overflow-y-auto thin-scroll">
+              <template x-for="(l, i) in apiLog" :key="l.uid">
+                <button @click="selectedLog = l.uid" class="w-full text-left px-2.5 py-2 rounded-lg text-[11px] font-mono flex items-center gap-2 border" :class="selectedLog === l.uid ? 'bg-slate-800 border-brand-accent/60' : 'border-transparent hover:bg-slate-800/60'">
+                  <span class="px-1.5 rounded bg-sky-500/20 text-sky-300 text-[10px]" x-text="l.method"></span>
+                  <span class="truncate flex-1 text-slate-200" x-text="l.path"></span>
+                  <span class="text-emerald-400" x-text="l.status"></span>
+                  <span class="text-slate-500" x-text="l.ms + 'ms'"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <div class="bg-darkbg border border-slate-700 rounded-xl overflow-hidden" x-show="logEntry">
+            <div class="px-4 py-2 border-b border-slate-700 text-[11px] font-mono text-slate-300 flex justify-between"><span x-text="logEntry?.method + ' ' + logEntry?.path"></span><span class="text-slate-500" x-text="logEntry?.at"></span></div>
+            <div class="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-700">
+              <div class="p-3"><div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Request</div><pre class="text-[11px] font-mono text-sky-200 whitespace-pre-wrap break-all max-h-72 overflow-auto thin-scroll" x-text="JSON.stringify(logEntry?.request, null, 2)"></pre></div>
+              <div class="p-3"><div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Response</div><pre class="text-[11px] font-mono text-emerald-200 whitespace-pre-wrap break-all max-h-72 overflow-auto thin-scroll" x-text="JSON.stringify(logEntry?.response, null, 2)"></pre></div>
+            </div>
+          </div>
+        </div>
+
+        <details class="bg-surface border border-slate-700 rounded-xl group">
+          <summary class="px-4 py-3 text-xs font-semibold text-slate-300 cursor-pointer flex items-center"><i data-lucide="database" class="w-4 h-4 mr-1.5 text-brand-accent"></i> Target data model (PostgreSQL) — for the production backend</summary>
+          <pre class="px-4 pb-4 text-[11px] font-mono text-slate-300 whitespace-pre overflow-x-auto thin-scroll" x-text="schemaSql"></pre>
+        </details>
+      </div>
+
+      <!-- ============ TAB: UPLOAD ANY BLUEPRINT FOR LOCAL PREVIEW ============ -->
+      <div x-show="activeTab === 'blueprint-upload'" x-cloak class="flex-1 overflow-y-auto thin-scroll p-4 lg:p-6 space-y-5" lang="ar" dir="rtl">
+        <div class="flex flex-wrap justify-between gap-3 items-start">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="upload-cloud" class="w-5 h-5 text-brand-accent"></i> رفع مخطط هندسي جديد</h2>
+            <p class="text-slate-300 text-xs mt-2 leading-relaxed">اختر أي مخطط PDF أو صورة PNG / JPG / WEBP. تقدر تعاينه، ثم تطلب من AI استخراج البيانات المرئية من نفس المخطط الجديد. المخطط التجريبي A-104 في صفحة Sheet منفصل تمامًا.</p>
+          </div>
+          <span class="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-200">Live AI Reader · Netlify + OpenAI</span>
+        </div>
+
+        <div class="rounded-xl bg-amber-500/10 border border-amber-500/35 px-4 py-3 text-xs text-amber-100 leading-relaxed">
+          <strong>اختبار قراءة فعلي:</strong> عند الضغط على «اقرأ المخطط بالذكاء الاصطناعي» سيتم إرسال الملف إلى OpenAI عبر وظيفة Netlify الآمنة، وليس قبل ذلك. سيرجع وصفًا وأبعادًا وملصقات يُحتمل أنه قرأها، مع توضيح ما لم يتمكن من تأكيده. <strong>هذا ليس فحص مطابقة كود أو اعتمادًا هندسيًا.</strong> نتائج Sheet القديمة بيانات محاكاة مستقلة.
+        </div>
+
+        <section class="rounded-xl bg-surface border border-slate-700 p-4 space-y-3">
+          <h3 class="text-sm font-bold text-white">1. اختر المخطط</h3>
+          <input x-ref="blueprintFile" class="hidden" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" @change="handleBlueprintSelection($event)" />
+          <button type="button" @click="$refs.blueprintFile.click()" @dragover.prevent @drop.prevent="loadBlueprintFile($event.dataTransfer?.files?.[0])" class="w-full min-h-32 border-2 border-dashed border-brand-500/50 hover:border-sky-400 bg-darkbg/60 rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-slate-200 transition">
+            <i data-lucide="file-up" class="w-7 h-7 text-brand-accent"></i>
+            <strong class="text-sm">اضغط لاختيار أي مخطط من جهازك</strong>
+            <span class="text-[11px] text-slate-400">PDF · PNG · JPG · WEBP | معاينة حتى 30 MB، تحليل AI حتى 3 MB. الأفضل صفحة واحدة واضحة.</span>
+          </button>
+          <div class="flex flex-wrap items-center gap-3 justify-between" x-show="blueprintPreview.url">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-semibold text-white break-all" x-text="blueprintPreview.name"></div>
+              <div class="text-[11px] text-slate-400" x-text="blueprintPreview.sizeLabel + ' · ' + (blueprintPreview.type === 'pdf' ? 'PDF' : 'Image')"></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <a :href="blueprintPreview.url" target="_blank" rel="noopener noreferrer" class="px-3 py-2 text-xs rounded-lg border border-sky-500/40 text-sky-200 hover:bg-sky-500/10">فتح في نافذة جديدة</a>
+              <button @click="clearBlueprint()" class="px-3 py-2 text-xs rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-700">إزالة الملف</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400">اختيار الملف والمعاينة محليان؛ لا يُرسل الملف إلى خدمة AI إلا بعد الضغط على زر التحليل. الملفات الكبيرة تُعرض فقط. لا ترسل مخططات سرية أو بيانات شخصية دون تصريح.</p>
+        </section>
+
+        <section class="rounded-xl border border-slate-700 bg-slate-900/80 overflow-hidden" x-show="blueprintPreview.url" x-cloak>
+          <div class="flex items-center justify-between flex-wrap gap-2 p-3 border-b border-slate-700 text-xs">
+            <span class="font-semibold text-slate-200">2. معاينة المخطط</span>
+            <span class="text-slate-400">المعاينة الأصلية — القراءة تظهر بالأسفل بعد التحليل</span>
+          </div>
+          <div class="min-h-[420px] lg:min-h-[580px] bg-slate-950 flex justify-center items-center p-2 lg:p-4">
+            <template x-if="blueprintPreview.type === 'pdf' && blueprintPreview.url">
+              <iframe :src="blueprintPreview.url" title="معاينة مخطط PDF" class="w-full h-[65vh] min-h-[400px] rounded-lg bg-white" loading="lazy"></iframe>
+            </template>
+            <template x-if="blueprintPreview.type === 'image' && blueprintPreview.url">
+              <img :src="blueprintPreview.url" alt="المخطط الهندسي الذي اخترته" class="max-w-full max-h-[78vh] object-contain rounded-lg" />
+            </template>
+          </div>
+          <p class="px-3 pb-3 text-[11px] text-slate-400">بعض متصفحات الجوال لا تعرض PDF داخل الصفحة؛ استخدم «فتح في نافذة جديدة» إن كانت المعاينة فارغة.</p>
+        </section>
+
+        <section class="rounded-xl border border-sky-500/30 bg-surface p-4 space-y-4" x-show="blueprintPreview.url" x-cloak>
+          <div class="flex flex-wrap justify-between gap-2 items-center">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="brain-circuit" class="w-5 h-5 text-sky-300"></i> 3. قراءة المخطط بالذكاء الاصطناعي الفعلي</h3>
+            <span class="px-2 py-1 rounded border border-sky-500/40 text-sky-200 bg-sky-500/10 text-[10px]">AI Extraction · Not SBC Audit</span>
+          </div>
+          <p class="text-xs leading-relaxed text-slate-300">جرب ملف مخطط واضح من صفحة واحدة. إذا كان PDF متعدد الصفحات، قد يتطلب التحليل وقتًا وتكلفة أعلى. لا تستنتج أبعادًا غير مكتوبة اعتمادًا على مقياس رسم تقريبي.</p>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">رمز دخول التجربة (من مسؤول Netlify)</label>
+              <input type="password" x-model="aiRead.pin" autocomplete="off" placeholder="Demo PIN" dir="ltr" class="w-full bg-darkbg border border-slate-600 rounded-lg px-3 py-2.5 text-white text-xs focus:outline-none focus:border-sky-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">وش تبي AI يركز عليه؟ (اختياري)</label>
+              <input x-model="aiRead.focus" maxlength="220" placeholder="مثال: أبعاد الممرات والأبواب" class="w-full bg-darkbg border border-slate-600 rounded-lg px-3 py-2.5 text-white text-xs focus:outline-none focus:border-sky-400" />
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap items-center">
+            <button type="button" @click="analyzeUploadedBlueprint()" :disabled="aiRead.status === 'running'" class="rounded-lg bg-gradient-to-l from-brand-600 to-sky-600 hover:brightness-110 disabled:opacity-50 px-4 py-3 text-white font-bold text-xs flex items-center gap-2">
+              <i data-lucide="scan-eye" class="w-4 h-4"></i>
+              <span x-text="aiRead.status === 'running' ? 'جاري قراءة المخطط…' : 'اقرأ المخطط بالذكاء الاصطناعي'"></span>
+            </button>
+            <button type="button" x-show="aiRead.status === 'done'" @click="exportAIRead()" class="rounded-lg border border-slate-600 px-3 py-2.5 bg-darkbg text-slate-200 text-xs">تصدير نتيجة القراءة JSON</button>
+          </div>
+          <div x-show="aiRead.status === 'running'" class="text-xs text-sky-200 flex items-center gap-2" role="status"><span class="animate-spin">◌</span> يتم إرسال الملف إلى خدمة الذكاء الاصطناعي وتحليل المعلومات المرئية. الرجاء عدم إغلاق الصفحة.</div>
+          <div x-show="aiRead.status === 'error'" x-cloak class="p-3 border border-rose-500/40 bg-rose-500/10 rounded-lg text-rose-200 text-xs" x-text="aiRead.message" role="alert"></div>
+        </section>
+
+        <section x-show="aiRead.status === 'done' && aiRead.result" x-cloak class="bg-surface border border-brand-500/40 rounded-xl p-4 space-y-4">
+          <div class="flex justify-between flex-wrap items-center gap-2"><h3 class="text-sm font-bold text-white">4. ما الذي قرأه AI من مخططك؟</h3><span class="px-2 py-1 rounded border border-amber-500/40 text-amber-200 text-[10px]">قراءة أولية · ليست شهادة مطابقة</span></div>
+          <div class="grid sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-darkbg p-3 border border-slate-700 rounded-lg"><span class="text-slate-400">عنوان اللوحة</span><p class="text-slate-100 font-semibold mt-1" x-text="aiRead.result?.drawing_title || 'غير واضح'"></p></div>
+            <div class="bg-darkbg p-3 border border-slate-700 rounded-lg"><span class="text-slate-400">نوع المخطط / مقياس الرسم</span><p class="text-slate-100 mt-1" x-text="(aiRead.result?.drawing_type || 'غير محدد') + ' · ' + (aiRead.result?.scale || 'المقياس غير واضح')"></p></div>
+          </div>
+          <p class="text-sm text-slate-200 leading-relaxed" x-text="aiRead.result?.summary"></p>
+          <h4 class="text-xs font-bold text-sky-300">العناصر والقياسات المقروءة <span class="font-mono" x-text="'(' + (aiRead.result?.elements?.length || 0) + ')'"></span></h4>
+          <div class="grid lg:grid-cols-2 gap-2">
+            <template x-for="(e, i) in (aiRead.result?.elements || [])" :key="i">
+              <div class="border border-slate-700 bg-darkbg rounded-lg p-3 text-xs space-y-1.5">
+                <div class="flex flex-wrap justify-between items-center gap-2"><strong class="text-white" x-text="e.label || 'عنصر مرئي'"></strong><span class="px-2 py-0.5 rounded text-[10px] border" :class="e.clarity === 'clear' ? 'text-emerald-300 border-emerald-500/40' : 'text-amber-300 border-amber-500/40'" x-text="e.clarity === 'clear' ? 'قراءة واضحة نسبيًا' : 'تحتاج تحقق'"></span></div>
+                <p class="text-sky-200 font-mono" dir="auto" x-text="e.value || 'لم تُقرأ قيمة مؤكدة'"></p>
+                <p class="text-slate-300" x-text="e.location || 'الموقع غير محدد'"></p>
+                <p class="text-slate-500 text-[11px]" x-text="'الدليل المرئي: ' + (e.evidence || 'غير محدد')"></p>
+              </div>
+            </template>
+          </div>
+          <div x-show="aiRead.result?.uncertainties?.length" class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-2">
+            <h4 class="font-bold text-amber-200">معلومات غير واضحة أو تحتاج مراجعة</h4>
+            <template x-for="(t, i) in (aiRead.result?.uncertainties || [])" :key="i"><p class="text-slate-200" x-text="'• ' + t"></p></template>
+          </div>
+          <p class="text-xs border-t border-slate-700 pt-3 text-slate-400">نتيجة قراءة باستخدام AI للملف الذي رفعته فقط. لا تتضمن مقارنة رسمية بكود البناء السعودي؛ راجع الأبعاد والنصوص يدويًا قبل استخدامها في قرار هندسي. <span x-text="'الملف: ' + aiRead.fileName"></span></p>
+        </section>
+
+        <section class="rounded-xl border border-slate-700 bg-surface px-4 py-4 space-y-3">
+          <h3 class="text-sm font-bold text-white">5. اختبار كود البناء السعودي</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">اختبار Code Test منفصل ويعتمد على إدخال بيانات شروط محددة يدويًا؛ لا تتغير نتائجه تلقائيًا بناءً على قراءة AI.</p>
+          <button @click="activeTab = 'code-test'" class="px-4 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold">انتقل إلى Code Test</button>
+        </section>
+      </div>
+
+      <!-- ============ TAB: VERIFIED SBC201 AR2024 LOCAL RULE TEST ============ -->
+      <div x-show="activeTab === 'code-test'" x-cloak class="flex-1 overflow-y-auto thin-scroll p-4 lg:p-6 space-y-5" lang="ar" dir="rtl">
+        <div class="flex flex-wrap gap-3 items-start justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-white flex gap-2 items-center"><i data-lucide="flask-conical" class="w-5 h-5 text-brand-accent"></i> مختبر كود البناء السعودي · SBC 201</h2>
+            <p class="text-slate-400 text-xs mt-1 leading-relaxed">اختبار قواعد قابلة للتنفيذ على مدخلات حقيقية؛ منفصل عن بيانات المحاكاة في بقية الواجهة.</p>
+          </div>
+          <div class="font-mono text-[11px] rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-200 px-3 py-2" dir="ltr">SBC 201-AR-2024 · §1013.1 / §1013.3</div>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/35 rounded-xl p-4 text-xs text-amber-100 leading-relaxed">
+          <strong>حدود الاختبار:</strong> ملف AR ترجمة عربية مختصرة وليس مرجع التصميم والتنفيذ الملزم. هذا تحقق أولي لمتطلبات محددة من لوحة الخروج، وليس اعتماد مطابقة المبنى أو فحصًا آليًا للصورة/المخطط. استثناءات المادة والتفاصيل الأخرى تتطلب نسخة CR ومراجعة مهندس.
+        </div>
+
+        <section class="bg-surface border border-slate-700 rounded-xl p-4 space-y-3">
+          <h3 class="text-sm text-white font-semibold flex gap-2 items-center"><i data-lucide="file-check" class="w-4 h-4 text-brand-accent"></i> 1. تحقق من مصدر القاعدة (PDF)</h3>
+          <p class="text-slate-300 text-xs leading-relaxed">اختر من جهازك ملف <span class="font-mono" dir="ltr">SBC201_AR2024.pdf</span>. يفحص المتصفح الملف محليًا، ويقرأ صفحة PDF رقم 325 للتحقق من وجود المادة 1013. لا يُرفع الملف إلى خادم.</p>
+          <label class="block cursor-pointer border-2 border-dashed border-slate-600 hover:border-sky-400 rounded-lg px-4 py-5 text-center text-slate-200 bg-darkbg/60">
+            <input type="file" accept="application/pdf,.pdf" class="hidden" @change="loadSbcPdf($event)">
+            <span class="flex justify-center"><i data-lucide="file-up" class="w-6 h-6 text-brand-accent"></i></span>
+            <span class="text-xs mt-2 block" x-text="codeTest.fileName || 'اختيار ملف PDF الرسمي من الجهاز'"></span>
+          </label>
+          <div class="rounded-lg border p-3 text-xs leading-relaxed" :class="codeTest.pdfVerified ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : (codeTest.pdfStatus === 'error' ? 'border-rose-500/40 bg-rose-500/10 text-rose-200' : 'border-slate-700 bg-darkbg text-slate-300')">
+            <span class="font-semibold block" x-text="codeTest.pdfStatus === 'verified' ? '✓ تحقق بنيوي ناجح من الملف والصفحة المطلوبة' : codeTest.pdfStatus === 'loading' ? 'جارٍ قراءة ملف PDF…' : codeTest.pdfStatus === 'error' ? 'تعذر التحقق من الملف' : 'لم يتم تحميل مصدر الاختبار بعد'"></span>
+            <span class="block mt-1" x-text="codeTest.pdfMessage"></span>
+            <span x-show="codeTest.pdfVerified" class="block font-mono text-[10px] mt-2 break-all" dir="ltr" x-text="'SHA-256: ' + codeTest.sha256"></span>
+          </div>
+          <p class="text-slate-400 text-[11px]">مراجع التحقق: <span dir="ltr" class="font-mono">PDF p.325 / printed p.298 · 1013.1 / 1013.3</span>. التحقق من شكل الملف والنص لا يُثبت الأصالة القانونية للتوقيع أو أي تحديثات لاحقة.</p>
+        </section>
+
+        <section class="bg-surface border border-slate-700 rounded-xl p-4 space-y-4">
+          <h3 class="text-sm text-white font-semibold flex gap-2 items-center"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-brand-accent"></i> 2. بيانات لوحة الخروج محل الفحص</h3>
+          <div class="flex flex-wrap gap-2">
+            <button @click="loadCodeTestCase('pass')" class="rounded-lg px-3 py-2 text-xs border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20">حالة مستوفية للشروط المحددة</button>
+            <button @click="loadCodeTestCase('fail')" class="rounded-lg px-3 py-2 text-xs border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20">حالة فيها مخالفات</button>
+            <button @click="loadCodeTestCase('unknown')" class="rounded-lg px-3 py-2 text-xs border border-slate-600 bg-darkbg text-slate-300 hover:bg-slate-700">بيانات ناقصة</button>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3 text-xs">
+            <template x-for="field in codeTestFields" :key="field.key">
+              <div class="space-y-1.5">
+                <label class="block text-slate-300" x-text="field.label"></label>
+                <select class="w-full rounded-lg bg-darkbg border border-slate-600 p-2.5 text-white focus:outline-none focus:border-sky-400" x-model="codeTest.inputs[field.key]" @change="codeTest.result = null">
+                  <option value="unknown">غير معروف / غير مقاس</option>
+                  <option value="yes">نعم</option>
+                  <option value="no">لا</option>
+                </select>
+              </div>
+            </template>
+          </div>
+          <div class="rounded-lg bg-darkbg/60 p-3 text-[11px] text-slate-300 leading-relaxed">المدخلات تُدخل يدويًا في هذه المرحلة، ولا يستخرجها النظام من ملف المخطط. يعتمد القرار على <strong>1013.1</strong> و<strong>1013.3</strong> فقط، وليس كامل الفصل العاشر.</div>
+          <div class="flex flex-wrap gap-2">
+            <button @click="runCodeTest()" :disabled="!codeTest.pdfVerified" class="rounded-lg bg-gradient-to-l from-brand-500 to-brand-600 disabled:opacity-40 px-4 py-2.5 text-sm font-bold text-white">نفّذ الفحص الفعلي للقواعد</button>
+            <button @click="exportCodeTest()" :disabled="!codeTest.result" class="rounded-lg px-4 py-2.5 text-xs bg-darkbg border border-slate-600 disabled:opacity-40 text-slate-200">تصدير نتيجة JSON</button>
+          </div>
+        </section>
+
+        <section x-show="codeTest.result" class="bg-darkbg border border-slate-700 rounded-xl p-4 space-y-4">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h3 class="text-sm font-bold text-white">3. نتيجة الاختبار</h3>
+            <span class="rounded-lg px-3 py-1.5 border text-xs font-bold" :class="codeTest.result?.status === 'FAIL' ? 'border-rose-500/50 bg-rose-500/10 text-rose-300' : codeTest.result?.status === 'PASS_LIMITED' ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/50 bg-amber-500/10 text-amber-300'" x-text="codeTestResultLabel()"></span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed" x-text="codeTest.result?.summary"></p>
+          <div class="space-y-2">
+            <template x-for="(c, i) in (codeTest.result?.checks || [])" :key="i">
+              <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-700/70 bg-surface/60">
+                <span class="font-mono text-[10px] shrink-0 mt-0.5" :class="c.status === 'FAIL' ? 'text-rose-300' : c.status === 'PASS' ? 'text-emerald-300' : 'text-amber-300'" x-text="c.status"></span>
+                <div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><strong class="text-white text-xs" x-text="c.name"></strong><span class="font-mono text-slate-400 text-[10px]" x-text="c.clause" dir="ltr"></span></div><p class="text-xs text-slate-300 mt-1 leading-relaxed" x-text="c.detail"></p></div>
+              </div>
+            </template>
+          </div>
+          <p class="text-amber-200 text-[11px]">حتى ظهور PASS_LIMITED لا يعني أن المشروع مطابق لجميع مواد الكود؛ يعني فقط نجاح هذه الشروط المحددة بمدخلات تم إدخالها يدويًا.</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===================== RIGHT PANEL ===================== -->
+    <aside class="w-full lg:w-96 bg-surface border-t lg:border-t-0 lg:border-l border-slate-700 flex flex-col min-h-[520px] lg:min-h-0">
+      <div class="border-b border-slate-700 flex text-xs">
+        <button @click="sideTab = 'audit'" :class="sideTab === 'audit' ? 'border-b-2 border-brand-accent text-brand-accent font-semibold' : 'text-slate-400'" class="flex-1 py-3 text-center transition" x-text="'Audit Findings (' + violations.length + ')'"></button>
+        <button @click="sideTab = 'copilot'" :class="sideTab === 'copilot' ? 'border-b-2 border-brand-accent text-brand-accent font-semibold' : 'text-slate-400'" class="flex-1 py-3 text-center transition flex items-center justify-center">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1 text-brand-accent"></i> SBC Copilot
+        </button>
+      </div>
+
+      <!-- Audit findings -->
+      <div x-show="sideTab === 'audit'" class="flex-1 overflow-y-auto thin-scroll p-4 space-y-4">
+        <div class="bg-darkbg p-4 rounded-xl border border-slate-700 flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400">Overall SBC Compliance Score</span>
+            <div class="text-2xl font-bold mt-0.5" :class="scoreColor" x-text="score + ' / 100'"></div>
+            <div class="flex gap-2 mt-2 text-[10px] font-mono">
+              <span class="text-rose-300" x-text="countSev('CRITICAL') + ' critical'"></span>
+              <span class="text-amber-300" x-text="countSev('WARNING') + ' warning'"></span>
+              <span class="text-sky-300" x-text="countSev('INFO') + ' info'"></span>
+            </div>
+          </div>
+          <svg viewBox="0 0 64 64" class="w-16 h-16 -rotate-90">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="#1e293b" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke-width="6" stroke-linecap="round" :stroke="probHex(score)" stroke-dasharray="163.36" :stroke-dashoffset="163.36 * (1 - score / 100)" style="transition: stroke-dashoffset .8s"/>
+            <text x="32" y="36" text-anchor="middle" transform="rotate(90 32 32)" class="fill-slate-100" style="font-size:12px;font-weight:700" x-text="score + '%'"></text>
+          </svg>
+        </div>
+
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detected Code Discrepancies</h3>
+
+        <template x-for="v in violations" :key="v.id">
+          <div @click="selectViolation(v.id)" class="p-3.5 rounded-xl border transition cursor-pointer"
+            :class="selectedViolationId === v.id ? 'bg-slate-800 shadow-md ' + sevSelected(v.severity) : 'bg-surfaceLight/40 border-slate-700/80 hover:border-slate-600'">
+            <div class="flex items-center justify-between gap-2">
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded border" :class="sevBadge(v.severity)" x-text="v.severity"></span>
+              <span class="text-[11px] font-mono text-slate-400" x-text="v.clause"></span>
+            </div>
+            <h4 class="text-xs font-semibold text-white mt-2" x-text="v.title"></h4>
+            <p class="text-xs text-slate-300 mt-1" x-text="v.description"></p>
+            <div class="mt-3 flex items-center justify-between pt-2 border-t border-slate-700/60 text-[11px]">
+              <button x-show="isOpen(v)" @click.stop="openObjectionModal(v.id)" class="text-brand-accent hover:underline flex items-center font-medium"><i data-lucide="scale" class="w-3.5 h-3.5 mr-1"></i> File Engineering Objection</button>
+              <span x-show="!isOpen(v)" class="text-slate-500">No action required</span>
+              <span class="px-2 py-0.5 text-[10px] rounded border" :class="statusBadge(v.status)" x-text="statusLabel(v.status)"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Copilot -->
+      <div x-show="sideTab === 'copilot'" class="flex-1 flex flex-col p-4 min-h-0">
+        <div x-ref="chatBox" class="flex-1 overflow-y-auto thin-scroll space-y-3 pr-1 text-xs max-h-[60vh] lg:max-h-none">
+          <div class="bg-darkbg p-3 rounded-lg border border-slate-700/80 text-slate-300">
+            <div class="flex items-center space-x-1.5 text-brand-accent font-semibold mb-1"><i data-lucide="bot" class="w-4 h-4"></i><span>MIYAR AI Assistant</span></div>
+            Ask me about Saudi Building Code interpretations, alternative solutions, egress calculations, or objection probability for this sheet.
+          </div>
+
+          <template x-for="(msg, index) in chatMessages" :key="index">
+            <div :class="msg.sender === 'user' ? 'bg-brand-600 text-white ml-6' : 'bg-surfaceLight text-slate-200 mr-6'" class="p-3 rounded-lg text-xs leading-relaxed">
+              <p class="whitespace-pre-line" x-text="msg.text"></p>
+              <div x-show="msg.cites && msg.cites.length" class="flex flex-wrap gap-1 mt-2">
+                <template x-for="c in (msg.cites || [])" :key="c"><span class="px-1.5 py-0.5 rounded bg-darkbg/60 border border-slate-600 font-mono text-[10px] text-sky-300" x-text="c"></span></template>
+              </div>
+              <div x-show="msg.payload" class="mt-2">
+                <button @click="msg.showPayload = !msg.showPayload" class="text-[10px] font-mono text-brand-accent hover:underline" x-text="(msg.showPayload ? '▾' : '▸') + ' structured output (JSON)'"></button>
+                <pre x-show="msg.showPayload" class="mt-1 p-2 rounded bg-darkbg text-[10px] font-mono text-emerald-200 whitespace-pre-wrap break-all" x-text="JSON.stringify(msg.payload, null, 2)"></pre>
+              </div>
+            </div>
+          </template>
+
+          <div x-show="aiTyping" class="bg-surfaceLight mr-6 p-3 rounded-lg typing text-slate-300 text-base leading-none w-16"><span>●</span><span>●</span><span>●</span></div>
+        </div>
+
+        <div class="flex gap-1.5 overflow-x-auto thin-scroll pb-1 mt-3">
+          <template x-for="p in quickPrompts" :key="p">
+            <button @click="sendChatMessage(p)" class="flex-shrink-0 px-2.5 py-1 rounded-full border border-slate-600 bg-darkbg text-[10px] text-slate-300 hover:border-brand-accent hover:text-brand-accent transition" x-text="p"></button>
+          </template>
+        </div>
+
+        <form @submit.prevent="sendChatMessage()" class="mt-2 relative">
+          <input type="text" x-model="chatInput" placeholder="Ask AI about SBC 801 exception rules..." class="w-full bg-darkbg border border-slate-700 rounded-lg pl-3 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+          <button type="submit" class="absolute right-2 top-2 text-brand-accent hover:text-white transition"><i data-lucide="send" class="w-4 h-4"></i></button>
+        </form>
+      </div>
+
+      <div class="p-3 border-t border-slate-700 bg-darkbg/50 text-center">
+        <span class="text-[10px] text-slate-400">Decision Support System for Certified SBC Engineers · Prototype (simulated AI)</span>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ===================== MODAL: FILE OBJECTION ===================== -->
+  <div x-show="showObjectionModal" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" @keydown.escape.window="showObjectionModal = false">
+    <div @click.outside="showObjectionModal = false" class="bg-surface border border-slate-700 rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto thin-scroll">
+      <button @click="showObjectionModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+
+      <div class="flex items-center space-x-3 text-brand-accent mb-5">
+        <div class="p-2.5 rounded-lg bg-brand-500/10 border border-brand-500/30"><i data-lucide="gavel" class="w-6 h-6"></i></div>
+        <div>
+          <h3 class="text-base font-bold text-white leading-tight">Engineering Objections Court <span class="font-ar text-slate-300 font-semibold text-sm">· محكمة الاعتراضات الهندسية</span></h3>
+          <p class="text-xs text-slate-400">File a technical dispute & submit alternative calculations</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Contested violation</label>
+            <select x-model="objectionForm.violationId" class="w-full bg-darkbg border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-brand-accent">
+              <template x-for="v in violations.filter(v => isOpen(v))" :key="v.id"><option :value="v.id" x-text="v.id + ' — ' + v.title" :selected="v.id === objectionForm.violationId"></option></template>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Basis of objection</label>
+            <select x-model="objectionForm.basis" class="w-full bg-darkbg border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-brand-accent">
+              <template x-for="b in basisOptions" :key="b"><option :value="b" x-text="b"></option></template>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-darkbg p-3 rounded-lg border border-slate-700" x-show="formViolation">
+          <span class="text-slate-400 block text-[10px]">Contested item</span>
+          <span class="font-semibold text-white text-xs" x-text="formViolation?.title"></span>
+          <span class="text-slate-400 block text-[10px] mt-1 font-mono" x-text="formViolation?.clause + ' · measured ' + formViolation?.measured + ' vs required ' + formViolation?.required"></span>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block font-medium text-slate-300">Technical basis & justification</label>
+            <button type="button" @click="fillExample()" class="text-[10px] text-brand-accent hover:underline">Insert example</button>
+          </div>
+          <textarea x-model="objectionForm.justification" rows="4" placeholder="Provide engineering rationale, hydraulic flow calculations, equivalent performance proof, cited clauses…" class="w-full bg-darkbg border border-slate-700 rounded-lg p-3 text-white placeholder-slate-500 focus:outline-none focus:border-brand-accent"></textarea>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Calculation method / reference</label>
+            <input x-model="objectionForm.calcMethod" placeholder="e.g. UL Design No. V450" class="w-full bg-darkbg border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-brand-accent">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Claimed equivalent value</label>
+            <input x-model="objectionForm.calcValue" placeholder="e.g. 95 min equivalent rating" class="w-full bg-darkbg border border-slate-700 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-brand-accent">
+          </div>
+        </div>
+
+        <!-- Live AI pre-evaluation -->
+        <div class="p-3 bg-brand-500/10 border border-brand-500/30 rounded-lg">
+          <div class="flex items-start space-x-3">
+            <i data-lucide="cpu" class="w-5 h-5 text-brand-accent flex-shrink-0 mt-0.5"></i>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-brand-accent block text-xs">AI Objection Pre-Evaluation (live)</span>
+                <span class="font-mono font-bold text-sm" :class="probColor(liveEval.probability, 'text')" x-text="liveEval.probability + '%'"></span>
+              </div>
+              <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1.5"><div class="h-full rounded-full transition-all duration-500" :class="probColor(liveEval.probability, 'bg')" :style="`width:${liveEval.probability}%`"></div></div>
+              <p class="text-[11px] text-slate-300 mt-1.5"><span class="font-mono" :class="probColor(liveEval.probability, 'text')" x-text="liveEval.label"></span> — <span x-text="liveEval.hint"></span></p>
+            </div>
+          </div>
+        </div>
+
+        <label class="block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition" :class="objectionForm.attachment ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 hover:border-slate-500'">
+          <input type="file" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg" class="hidden" @change="attachFile($event)">
+          <span class="flex justify-center mb-1 text-slate-400"><i data-lucide="cloud-upload" class="w-6 h-6"></i></span>
+          <span class="text-slate-300 block font-medium" x-text="objectionForm.attachment ? 'Attached: ' + objectionForm.attachment : 'Attach Support Evidence (PDF / Calc Sheets)'"></span>
+          <span class="text-[10px] text-slate-500">Max size 25MB · Stays in your browser in this prototype</span>
+        </label>
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button @click="showObjectionModal = false" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold">Cancel</button>
+        <button @click="submitObjection()" :disabled="submitting" class="px-5 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-brand-500 text-white text-xs font-semibold hover:from-brand-500 hover:to-brand-600 disabled:opacity-60 shadow-md shadow-brand-500/20 flex items-center">
+          <span class="flex mr-1.5" :class="submitting && 'animate-spin'"><i data-lucide="send" class="w-3.5 h-3.5"></i></span>
+          <span x-text="submitting ? 'Submitting…' : 'Submit to Official Reviewer'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div x-show="toast.show" x-cloak x-transition class="fixed bottom-5 right-5 z-[60] text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-xs font-medium max-w-sm" :class="toast.type === 'error' ? 'bg-rose-600' : (toast.type === 'info' ? 'bg-sky-700' : 'bg-emerald-600')">
+    <span class="flex" x-html="iconSvg(toast.type === 'error' ? 'triangle-alert' : (toast.type === 'info' ? 'info' : 'circle-check'), 'w-4 h-4')"></span>
+    <span x-text="toast.message"></span>
+  </div>
+
+  <!-- ===================== APP LOGIC ===================== -->
+  <script>
+    /* ---------- Lucide: render any <i data-lucide> that appears (incl. Alpine templates) ---------- */
+    (function () {
+      let queued = false;
+      const render = () => { queued = false; if (window.lucide && document.querySelector('i[data-lucide]')) lucide.createIcons(); };
+      new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(render); } })
+        .observe(document.documentElement, { childList: true, subtree: true });
+      document.addEventListener('DOMContentLoaded', render);
+    })();
+
+    let miyarLiveBlueprintFile = null; // holds only the user's selected native File; no browser persistence
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
+    const stamp = () => new Date().toLocaleString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+    /* ---------- Mock backend: mirrors the planned REST contract ---------- */
+    const MiyarAPI = {
+      log: null,
+      record(method, path, request, response, ms) {
+        this.log && this.log.unshift({ uid: uuid(), method, path, request, response, status: 200, ms, at: stamp() });
+      },
+      async analyze(req, violations) {
+        const ms = 180 + Math.round(Math.random() * 120);
+        const open = violations.filter(v => ['OPEN', 'UNDER_OBJECTION'].includes(v.status));
+        const res = {
+          audit_id: uuid(),
+          drawing_id: req.drawing_id,
+          sbc_standard: req.sbc_standard,
+          compliance_score: 100 - open.reduce((a, v) => a + v.penalty, 0),
+          violations_count: open.length,
+          findings: open.map(v => ({ id: v.id, clause: v.clause, severity: v.severity, bbox: v.bbox, description_en: v.description }))
+        };
+        this.record('POST', '/api/v1/audit/analyze', req, res, ms);
+        return res;
+      },
+      async submitObjection(req, evaluation) {
+        await sleep(650);
+        const res = { objection_id: uuid(), status: 'PENDING_REVIEW', ai_evaluation_score: evaluation.label, ai_probability: evaluation.probability / 100 };
+        this.record('POST', '/api/v1/objections/submit', req, res, 640 + Math.round(Math.random() * 80));
+        return res;
+      },
+      async decide(id, req) {
+        await sleep(300);
+        const res = { objection_id: id, status: req.decision, decided_at: new Date().toISOString() };
+        this.record('POST', `/api/v1/objections/${id}/decision`, req, res, 290);
+        return res;
+      }
+    };
+
+    function miyarApp() {
+      return {
+        /* ---------- UI state ---------- */
+        activeTab: 'editor',
+        sideTab: 'audit',
+        navItems: [
+          { id: 'editor', label: 'Blueprint Viewer', short: 'Sheet', icon: 'layers' },
+          { id: 'blueprint-upload', label: 'Upload Blueprint (PDF / Image)', short: 'Upload', icon: 'upload-cloud' },
+          { id: 'court', label: 'Objections Court', short: 'Court', icon: 'gavel' },
+          { id: 'diff', label: 'Version Diff', short: 'Diff', icon: 'git-compare' },
+          { id: 'reports', label: 'Audit Reports', short: 'Report', icon: 'file-text' },
+          { id: 'code-test', label: 'SBC 201 Rule Test', short: 'Code Test', icon: 'flask-conical' }
+        ],
+        layers: { violations: true, annotations: true },
+        zoom: 1,
+        selectedViolationId: 'V-801-A',
+        showObjectionModal: false,
+        submitting: false,
+        toast: { show: false, message: '', type: 'success' },
+        toastTimer: null,
+        revApplied: false,
+        diffMode: 'split',
+        swipe: 50,
+        activeChange: 1,
+        hoverChange: null,
+        apiLog: [],
+        selectedLog: null,
+
+        /* ---------- Local blueprint selection and display — not an AI audit ---------- */
+        blueprintPreview: {name: '', sizeLabel: '', type: '', url: ''},
+        aiRead: { status: 'idle', message: '', result: null, fileName: '', focus: 'اقرأ المسميات والأبعاد والأبواب والسلالم والممرات', pin: '' },
+
+        /* ---------- SBC 201 local rule test (real deterministic check, independent of demo audit) ---------- */
+        codeTest: {
+          pdfStatus: 'idle', pdfVerified: false, fileName: '', pdfMessage: '', sha256: '',
+          inputs: { signRequired: 'yes', bilingual: 'yes', signVisible: 'yes', routeDirect: 'yes', directionShown: 'yes', illuminated: 'yes', tactileOnly: 'no' },
+          result: null
+        },
+        codeTestFields: [
+          { key: 'signRequired', label: 'هل لوحة الخروج مطلوبة لهذه الحالة؟ (الاستثناءات تتطلب فحص CR)' },
+          { key: 'bilingual', label: 'هل تظهر كلمة الخروج بالعربية والإنجليزية؟' },
+          { key: 'signVisible', label: 'هل اللوحة قابلة للرؤية من اتجاهات مسار الخروج المعنية؟' },
+          { key: 'routeDirect', label: 'هل مسار الخروج واضح مباشرة للشاغلين؟' },
+          { key: 'directionShown', label: 'هل توجد علامة اتجاه واضحة عند عدم وضوح المسار؟' },
+          { key: 'illuminated', label: 'هل العلامة مضاءة داخليًا أو خارجيًا؟' },
+          { key: 'tactileOnly', label: 'هل هي علامة لمس/برايل فقط ضمن استثناء 1013.4؟' }
+        ],
+
+        /* ---------- Domain data (stubbed; matches planned schema) ---------- */
+        project: { id: '5f0c2a8e-3d1b-4c55-9a77-2e1f0b9d4a10', title: 'Al-Nakhla Tower B', building_type: 'Commercial (Group B, High-Rise)', location_gis: 'Riyadh · 24.7136° N, 46.6753° E' },
+        drawing: { id: '9c3e7b12-6a4f-4f0e-8d21-7b5a1c0e2f33', version_number: 1, file_url: 'sheets/A-104_rev1.dwg', status: 'violations_found' },
+
+        violations: [
+          {
+            id: 'V-801-A', standard: 'SBC 801', clause: 'SBC 801 - Sec. 10.4.2', severity: 'CRITICAL', penalty: 9,
+            title: 'Corridor Egress Width Non-Compliance', titleAr: 'عرض ممر الخروج غير مطابق',
+            zone: 'Zone 02 · Corridor B-12',
+            description: 'Measured width is 1,050mm. SBC 801 mandates a minimum clear width of 1,200mm for occupant loads exceeding 50.',
+            measured: '1,050 mm', required: '≥ 1,200 mm',
+            citation: '"Corridors serving an occupant load greater than 50 shall have a minimum clear width of 1,200 mm, unobstructed for the full length of the path of egress travel." — SBC 801 §10.4.2 (prototype excerpt)',
+            bbox: [470, 244, 300, 72], status: 'OPEN'
+          },
+          {
+            id: 'V-201-B', standard: 'SBC 201', clause: 'SBC 201 - Sec. 7.2.1', severity: 'WARNING', penalty: 5,
+            title: 'Stairwell Assembly Fire Resistance Rating', titleAr: 'مقاومة الحريق لباب الدرج',
+            zone: 'Zone 03 · Stairwell ST-04',
+            description: '60-minute fire assembly provided. Required rating is 90 minutes for High-Rise Group B structures.',
+            measured: '60 min', required: '≥ 90 min',
+            citation: '"Opening protectives in interior exit stairway enclosures of high-rise buildings shall have a fire protection rating of not less than 90 minutes." — SBC 201 §7.2.1 (prototype excerpt)',
+            bbox: [776, 318, 60, 76], status: 'UNDER_OBJECTION'
+          },
+          {
+            id: 'V-801-C', standard: 'SBC 801', clause: 'SBC 801 - Sec. 10.13.1', severity: 'INFO', penalty: 2,
+            title: 'Exit Sign Visibility at Atrium', titleAr: 'وضوح لوحة الخروج في الردهة',
+            zone: 'Zone 01 · Main Atrium',
+            description: 'Exit sign EX-02 is 32 m from the furthest atrium point. Illuminated exit signs must be visible within 30 m.',
+            measured: '32 m', required: '≤ 30 m',
+            citation: '"Exit signs shall be located so that no point in an exit access corridor or exit passageway is more than 30 m from the nearest visible exit sign." — SBC 801 §10.13.1 (prototype excerpt)',
+            bbox: [44, 466, 96, 46], status: 'OPEN'
+          }
+        ],
+
+        annotations: [
+          { x: 220, y: 360, text: 'Occ. load 186 · Group B' },
+          { x: 560, y: 140, text: 'Travel dist. 41 m ≤ 60 m ✓' },
+          { x: 880, y: 470, text: 'Stair width 1,400 mm ✓' }
+        ],
+
+        changes: [
+          { n: 1, violationId: 'V-801-A', x: 600, y: 240, title: 'Partition P-07 shifted 200 mm north', delta: 'Corridor B-12: 1,050 → 1,250 mm clear', impact: '−5.6 m² office area · est. SAR 14,500' },
+          { n: 2, violationId: 'V-201-B', x: 800, y: 352, title: 'Stair door upgraded FD60 → FD90', delta: 'Fire rating 60 → 90 min (listed assembly)', impact: 'No area change · est. SAR 6,200' },
+          { n: 3, violationId: 'V-801-C', x: 82, y: 438, title: 'EX-02 relocated, EX-03 added', delta: 'Max sign distance 32 m → 18 m', impact: 'Electrical rev. E-201 · est. SAR 1,100' },
+          { n: 4, violationId: 'V-801-A', x: 840, y: 268, title: 'Sprinklers added along B-12', delta: '6 QR heads @ 3.5 m c/c (NFPA 13)', impact: 'Enables Exception 10.4.3 · est. SAR 9,800' }
+        ],
+
+        objections: [],
+        selectedObjectionId: null,
+        reviewerNotes: '',
+        basisOptions: ['Equivalent Performance', 'Code Exception', 'Measurement Dispute', 'Alternative Design'],
+        objectionForm: { violationId: 'V-801-A', basis: 'Code Exception', justification: '', calcMethod: '', calcValue: '', attachment: '' },
+
+        audit: { running: false, progress: 0, stepIndex: 0, steps: ['Parsing DWG layers (A-104)…', 'Vectorizing walls, doors & openings…', 'Computing occupant loads (Group B)…', 'Checking SBC 801 Ch.10 egress rules…', 'Checking SBC 201 Ch.7 fire-resistance…', 'Generating bounding boxes & citations…'] },
+
+        chatInput: '',
+        aiTyping: false,
+        aiBusy: false,
+        quickPrompts: ['Why is Corridor B-12 non-compliant?', 'Egress width for 240 occupants with sprinklers', 'Alternatives for the stair door rating', 'Objection probability for V-801-A', 'Summarize this audit'],
+        chatMessages: [
+          { sender: 'ai', text: 'Hello Engineer Sarah! I have finished auditing Blueprint Sheet A-104 against SBC 201 & SBC 801. 3 findings detected: 1 critical, 1 warning, 1 info.', cites: ['SBC 801 §10.4.2', 'SBC 201 §7.2.1', 'SBC 801 §10.13.1'], payload: null, showPayload: false }
+        ],
+
+        schemaSql: `-- Projects & Drawings
+CREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  building_type TEXT NOT NULL,           -- e.g., Commercial, Residential
+  location_gis TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE drawings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  version_number INT DEFAULT 1,
+  file_url TEXT NOT NULL,
+  status TEXT DEFAULT 'pending_review'   -- 'compliant', 'violations_found', 'under_objection'
+);
+
+-- AI Compliance Audits & Violations
+CREATE TABLE sbc_violations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  drawing_id UUID REFERENCES drawings(id) ON DELETE CASCADE,
+  sbc_clause TEXT NOT NULL,              -- e.g., "SBC 201 - Clause 10.4.2"
+  severity TEXT CHECK (severity IN ('CRITICAL', 'WARNING', 'INFO')),
+  description_en TEXT NOT NULL,
+  bounding_box_coordinates JSONB,        -- [x, y, w, h]
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Engineering Objections Court
+CREATE TABLE engineering_objections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  violation_id UUID REFERENCES sbc_violations(id) ON DELETE CASCADE,
+  engineer_id UUID NOT NULL,
+  objection_reason TEXT NOT NULL,
+  supporting_calc_url TEXT,
+  ai_recommendation_summary TEXT,
+  status TEXT DEFAULT 'SUBMITTED',       -- 'SUBMITTED', 'IN_REVIEW', 'ACCEPTED', 'REJECTED'
+  reviewer_decision_notes TEXT
+);`,
+
+        /* ---------- SBC201 PDF structural verification & limited rule evaluation ---------- */
+        async loadSbcPdf(event) {
+          const f = event.target.files?.[0];
+          if (!f) return;
+          this.codeTest.pdfVerified = false;
+          this.codeTest.result = null;
+          this.codeTest.pdfStatus = 'loading';
+          this.codeTest.fileName = f.name;
+          this.codeTest.pdfMessage = 'جاري التحقق من 593 صفحة ومن موضع البند 1013 في PDF…';
+          try {
+            if (f.size > 60 * 1024 * 1024) throw new Error('الملف يتجاوز الحد 60 MB.');
+            const bytes = await f.arrayBuffer();
+            const header = new TextDecoder().decode(bytes.slice(0, 5));
+            if (header !== '%PDF-') throw new Error('الملف ليس PDF صالحًا من حيث الترويسة.');
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            const fileSha256 = Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, '0')).join('');
+            const reviewedPdfSha256 = '54df33d8ea572d0e3423109f9767e09d4fd89b31354186dd386acdc830e2524e';
+            if (fileSha256 === reviewedPdfSha256) {
+              // Exact-byte match with the 593-page user-provided PDF already reviewed (p. 325, §1013).
+              this.codeTest.sha256 = fileSha256;
+              this.codeTest.pdfVerified = true;
+              this.codeTest.pdfStatus = 'verified';
+              this.codeTest.pdfMessage = 'تطابق SHA-256 كامل مع نسخة SBC 201-AR-2024 التي روجعت مسبقًا (593 صفحة، المادة 1013، صفحة 325).';
+              this.showToast('تم التحقق من تطابق ملف SBC201 مع النسخة المختبرة.');
+              return;
+            }
+            // For a different binary of the same edition, verify headings and page position using PDF.js.
+            const pdfLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+            pdfLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+            const doc = await pdfLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+            if (doc.numPages !== 593) throw new Error('عدد الصفحات لا يطابق النسخة المستخدمة للاختبار (593 صفحة).');
+            const getPageText = async (pageNumber) => {
+              const pg = await doc.getPage(pageNumber);
+              const contents = await pg.getTextContent();
+              return contents.items.map(x => x.str || '').join(' ');
+            };
+            const [cover, intro, chapter] = await Promise.all([getPageText(1), getPageText(28), getPageText(325)]);
+            const combined = (cover + ' ' + intro + ' ' + chapter).replace(/\s+/g, '');
+            const hasSource = /SBC201[-–]?AR[-–]?2024/i.test(combined);
+            const hasClause = /1013/.test(chapter) && /الخروج/.test(chapter);
+            if (!hasSource || !hasClause) throw new Error('لم نجد تعريف SBC201-AR-2024 أو عنوان المادة 1013 في الصفحات المتوقعة.');
+            this.codeTest.sha256 = fileSha256;
+            this.codeTest.pdfVerified = true;
+            this.codeTest.pdfStatus = 'verified';
+            this.codeTest.pdfMessage = '593 صفحة؛ عُثر على هوية SBC201-AR-2024 والمادة 1013 في صفحة PDF 325. لا يوجد رفع سحابي.';
+            this.showToast('تم التحقق من مصدر SBC 201 العربي؛ يمكنك الآن اختبار القواعد.');
+            await doc.destroy();
+          } catch (err) {
+            this.codeTest.pdfStatus = 'error';
+            this.codeTest.pdfMessage = String(err?.message || err) + ' — يتطلب استخراج نص PDF اتصالًا بمكتبة PDF.js.';
+            this.showToast('تعذر التحقق من ملف الكود؛ لم يتم تشغيل الفحص.', 'error');
+          }
+        },
+        loadCodeTestCase(kind) {
+          const cases = {
+            pass: { signRequired:'yes', bilingual:'yes', signVisible:'yes', routeDirect:'yes', directionShown:'yes', illuminated:'yes', tactileOnly:'no' },
+            fail: { signRequired:'yes', bilingual:'no', signVisible:'yes', routeDirect:'no', directionShown:'no', illuminated:'no', tactileOnly:'no' },
+            unknown: { signRequired:'yes', bilingual:'unknown', signVisible:'unknown', routeDirect:'unknown', directionShown:'unknown', illuminated:'unknown', tactileOnly:'unknown' }
+          };
+          this.codeTest.inputs = { ...cases[kind] };
+          this.codeTest.result = null;
+        },
+        runCodeTest() {
+          if (!this.codeTest.pdfVerified) { this.showToast('الرجاء تحميل ملف SBC201_AR2024.pdf والتحقق منه أولًا.', 'error'); return; }
+          const d = this.codeTest.inputs, checks = [];
+          const add = (name, clause, status, detail) => checks.push({ name, clause, status, detail });
+          const bool = (v, yes, no) => v === 'yes' ? ['PASS', yes] : v === 'no' ? ['FAIL', no] : ['UNKNOWN', 'لا تتوفر بيانات كافية لإصدار نتيجة.'];
+          if (d.signRequired === 'no') {
+            add('نطاق تطبيق الاختبار', 'SBC 201 §1013.1', 'NOT_APPLICABLE', 'صنّفت الحالة كغير مشمولة بشرط اللوحة، دون التحقق من صحة هذا التصنيف في CR.');
+          } else if (d.signRequired === 'unknown') {
+            add('نطاق تطبيق الاختبار', 'SBC 201 §1013.1', 'UNKNOWN', 'يجب تحديد قابلية تطبيق المادة والاستثناءات قبل الفحص.');
+          } else {
+            const a = bool(d.bilingual, 'اللغة العربية والإنجليزية موجودتان.', 'اللغتان غير متوفرتين معًا: تتطلب 1013.1 علامة ثنائية اللغة.');
+            add('لغة علامة الخروج', 'SBC 201 §1013.1', ...a);
+            add('رؤية علامة الخروج', 'SBC 201 §1013.1', ...bool(d.signVisible, 'وُصفت العلامة بأنها مرئية من اتجاهات المسار.', 'العلامة غير مرئية من بعض اتجاهات المسار المعنية.'));
+            if (d.routeDirect === 'no') {
+              add('علامات اتجاه الخروج', 'SBC 201 §1013.1', ...bool(d.directionShown, 'توجد علامات تُظهر اتجاه المسار.', 'عندما لا يظهر المسار مباشرة، يلزم إيضاح الاتجاه بعلامة مرئية.'));
+            } else if (d.routeDirect === 'unknown') {
+              add('علامات اتجاه الخروج', 'SBC 201 §1013.1', 'UNKNOWN', 'مجهول ما إذا كان مسار الخروج واضحًا مباشرةً، فلا يمكن حسم الحاجة لعلامات الاتجاه.');
+            } else {
+              add('علامات اتجاه الخروج', 'SBC 201 §1013.1', 'NOT_APPLICABLE', 'المسار موصوف بأنه مرئي مباشرة، فلا يفعل هذا الشرط المشروط.');
+            }
+            if (d.tactileOnly === 'yes') {
+              add('إضاءة علامة الخروج', 'SBC 201 §1013.3', 'NOT_APPLICABLE', 'استثناء علامة اللمس المرتبطة بالمادة 1013.4؛ يلزم تحقق مستقل من صحة التصنيف.');
+            } else if (d.tactileOnly === 'unknown') {
+              add('إضاءة علامة الخروج', 'SBC 201 §1013.3', 'UNKNOWN', 'لا نعرف هل العلامة من النوع المستثنى من الإضاءة.');
+            } else {
+              add('إضاءة علامة الخروج', 'SBC 201 §1013.3', ...bool(d.illuminated, 'اللوحة مضاءة داخليًا أو خارجيًا.', 'علامة الخروج غير مضاءة داخليًا ولا خارجيًا.'));
+            }
+          }
+          const fail = checks.filter(x => x.status === 'FAIL').length;
+          const unknown = checks.filter(x => x.status === 'UNKNOWN').length;
+          const pass = checks.filter(x => x.status === 'PASS').length;
+          const status = fail ? 'FAIL' : unknown ? 'INSUFFICIENT_DATA' : pass ? 'PASS_LIMITED' : 'NOT_APPLICABLE';
+          const summary = fail ? `تم اكتشاف ${fail} إخفاق/إخفاقات في الشروط المختبرة، و${unknown} فحوص غير محسومة.` : unknown ? `لا يمكن الحكم على ${unknown} شرط/شروط بسبب بيانات ناقصة.` : pass ? `اجتازت الحالة ${pass} شروط محددة؛ لا يُعد ذلك اعتمادًا لامتثال كامل الكود.` : 'لا توجد شروط قابلة للحكم في هذه الحالة ضمن الاختبار المحدود.';
+          this.codeTest.result = { status, summary, checks, tested_at: new Date().toISOString() };
+        },
+        codeTestResultLabel() {
+          const s = this.codeTest.result?.status;
+          return { FAIL:'مخالفة في شروط الاختبار', INSUFFICIENT_DATA:'بيانات غير كافية', PASS_LIMITED:'اجتياز أولي محدود', NOT_APPLICABLE:'خارج النطاق المُدخل' }[s] || '';
+        },
+        exportCodeTest() {
+          if (!this.codeTest.result) return;
+          const payload = {
+            engine: 'MIYAR deterministic SBC rule test v1',
+            type: 'manual_input_rule_check',
+            standard: 'SBC 201', edition: 2024, source_format: 'AR-summary',
+            source_file: this.codeTest.fileName, source_pdf_sha256: this.codeTest.sha256,
+            references: [{ clause:'1013.1', pdf_page:325, printed_page:298 }, { clause:'1013.3', pdf_page:325, printed_page:298 }],
+            inputs: this.codeTest.inputs, result: this.codeTest.result,
+            limitations: 'Preliminary checks of manually entered attributes only; not a CR-based compliance decision or automatic blueprint analysis.'
+          };
+          const blob = new Blob([JSON.stringify(payload,null,2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = Object.assign(document.createElement('a'), {href:url, download:'miyar-SBC201-rule-test.json'});
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        },
+
+        /* ---------- Upload blueprint preview (local only; no external transmission) ---------- */
+        handleBlueprintSelection(event) {
+          const file = event?.target?.files?.[0];
+          this.loadBlueprintFile(file);
+        },
+        async loadBlueprintFile(file) {
+          if (!file) return;
+          if (this.aiRead.status === 'running') { this.showToast('انتظر اكتمال التحليل قبل اختيار مخطط آخر.', 'info'); return; }
+          const ext = String(file.name || '').split('.').pop().toLowerCase();
+          const kind = ext === 'pdf' ? 'pdf' : ['png','jpg','jpeg','webp'].includes(ext) ? 'image' : '';
+          if (!kind) { this.showToast('الملفات المدعومة: PDF أو PNG أو JPG أو WEBP', 'error'); return; }
+          if (!file.size || file.size > 30 * 1024 * 1024) { this.showToast('الملف يجب أن يكون أصغر من 30 MB وغير فارغ.', 'error'); return; }
+          try {
+            const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+            const ascii = String.fromCharCode(...header);
+            const pdfOK = ascii.startsWith('%PDF-');
+            const pngOK = header[0] === 0x89 && ascii.slice(1,4) === 'PNG';
+            const jpgOK = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+            const webpOK = ascii.slice(0,4) === 'RIFF' && ascii.slice(8,12) === 'WEBP';
+            const valid = (ext === 'pdf' && pdfOK) || (ext === 'png' && pngOK) || (['jpg','jpeg'].includes(ext) && jpgOK) || (ext === 'webp' && webpOK);
+            if (!valid) { this.showToast('محتوى الملف لا يطابق نوعه أو أنه غير مدعوم.', 'error'); return; }
+            if (this.blueprintPreview.url) URL.revokeObjectURL(this.blueprintPreview.url);
+            const mime = kind === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+            const safeFile = file.type === mime ? file : new Blob([file], { type: mime });
+            this.blueprintPreview = {name: file.name, sizeLabel: (file.size/(1024*1024)).toFixed(2) + ' MB', type: kind, url: URL.createObjectURL(safeFile)};
+            miyarLiveBlueprintFile = file;
+            this.aiRead.status = 'idle'; this.aiRead.result = null; this.aiRead.message = ''; this.aiRead.fileName = '';
+            this.activeTab = 'blueprint-upload';
+            this.showToast('تم فتح المخطط. اضغط «اقرأ المخطط» لإجراء قراءة AI حقيقية.', 'info');
+          } catch (err) {
+            this.showToast('تعذر قراءة الملف: ' + String(err?.message || err), 'error');
+          }
+        },
+        clearBlueprint() {
+          if (this.aiRead.status === 'running') { this.showToast('انتظر اكتمال التحليل قبل تغيير المخطط.', 'info'); return; }
+          if (this.blueprintPreview.url) URL.revokeObjectURL(this.blueprintPreview.url);
+          miyarLiveBlueprintFile = null;
+          this.blueprintPreview = {name: '', sizeLabel: '', type: '', url: ''};
+          this.aiRead.status = 'idle'; this.aiRead.message = ''; this.aiRead.result = null; this.aiRead.fileName = '';
+          if (this.$refs.blueprintFile) this.$refs.blueprintFile.value = '';
+        },
+
+        /* ---------- Real AI reading via same-origin Netlify Function ---------- */
+        async analyzeUploadedBlueprint() {
+          const f = miyarLiveBlueprintFile;
+          if (!f) { this.aiRead.status = 'error'; this.aiRead.message = 'اختر مخططًا أولًا.'; return; }
+          if (f.size > 3 * 1024 * 1024) { this.aiRead.status = 'error'; this.aiRead.message = 'الحد الحالي لتحليل AI هو 3 MB بسبب حد طلبات Netlify. صدّر صفحة المخطط منفصلة بصيغة PDF خفيفة أو صورة واضحة أقل من 3 MB.'; return; }
+          if (!this.aiRead.pin.trim()) { this.aiRead.status = 'error'; this.aiRead.message = 'أدخل رمز دخول التجربة الذي اختاره مسؤول المشروع في Netlify (MIYAR_DEMO_PIN).'; return; }
+          this.aiRead.status = 'running'; this.aiRead.result = null; this.aiRead.message = '';
+          let timeout;
+          try {
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error('تعذر قراءة الملف محليًا.'));
+              const typedMime = this.blueprintPreview.type === 'pdf' ? 'application/pdf' : (/\.png$/i.test(f.name) ? 'image/png' : /\.webp$/i.test(f.name) ? 'image/webp' : 'image/jpeg');
+              reader.readAsDataURL(new Blob([f], { type: typedMime }));
+            });
+            const controller = new AbortController();
+            timeout = setTimeout(() => controller.abort(), 57000);
+            const response = await fetch('/.netlify/functions/analyze-blueprint', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+              body: JSON.stringify({ filename: f.name, data_url: dataUrl, focus: String(this.aiRead.focus || '').slice(0, 220), pin: this.aiRead.pin })
+            });
+            let payload;
+            try { payload = await response.json(); } catch (_) { throw new Error('وظيفة Netlify لم تُرجع بيانات صحيحة. تحقق من نشر مجلد netlify/functions مع الموقع.'); }
+            if (!response.ok || !payload.ok) throw new Error(payload.error || `فشل الاتصال (HTTP ${response.status})`);
+            if (!payload.result || !Array.isArray(payload.result.elements)) throw new Error('استجابة غير متوقعة من خدمة AI.');
+            this.aiRead.result = payload.result;
+            this.aiRead.fileName = f.name;
+            this.aiRead.status = 'done';
+            this.showToast('نجحت قراءة المخطط بالذكاء الاصطناعي. راجع البيانات قبل استخدامها.');
+          } catch (err) {
+            this.aiRead.status = 'error';
+            const message = String(err?.message || err);
+            this.aiRead.message = err?.name === 'AbortError' ? 'تجاوز التحليل الوقت المتاح. جرب مخططًا أصغر أو صفحة واحدة.' : (message.includes('Failed to fetch') ? 'تعذر الوصول لوظيفة AI. نشر HTML وحده لا يكفي؛ تحتاج ملفات Netlify Functions.' : message);
+          } finally { if (timeout) clearTimeout(timeout); }
+        },
+        exportAIRead() {
+          if (!this.aiRead.result) return;
+          const payload = { product: 'MIYAR', mode: 'AI_DRAWING_READING_ONLY', source_file: this.aiRead.fileName, generated_at: new Date().toISOString(), result: this.aiRead.result, limitation: 'Unverified AI extraction. Not an SBC compliance determination.' };
+          const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}));
+          const a = Object.assign(document.createElement('a'), {href: url, download:'miyar-ai-drawing-reading.json'});
+          a.click(); setTimeout(() => URL.revokeObjectURL(url), 1200);
+        },
+
+        /* ---------- Lifecycle ---------- */
+        initApp() {
+          MiyarAPI.log = this.apiLog;
+          // Seed a case already in the docket
+          const seedForm = { violationId: 'V-201-B', basis: 'Equivalent Performance', justification: 'Equivalent fire rating calculated via UL Design No. V450. The 60-min door is paired with a pressurized stair (SBC 801 §9.3), intumescent seals and a sprinkler water curtain per NFPA 13, giving a tested equivalent of 95 minutes integrity.', calcMethod: 'UL Design No. V450 + NFPA 13', calcValue: '95 min equivalent', attachment: 'UL-V450_calc-sheet.pdf' };
+          this.objections.push({
+            id: 'OBJ-2026-0417', uuid: uuid(), violationId: 'V-201-B', engineer: 'Eng. Faisal Al-Harbi', basis: seedForm.basis,
+            reason: seedForm.justification, calcMethod: seedForm.calcMethod, calcValue: seedForm.calcValue, attachment: seedForm.attachment,
+            ai: this.evaluateObjection(seedForm), status: 'IN_REVIEW', submittedAt: '05/11/2026, 10:12', reviewerNotes: '',
+            timeline: [
+              { at: '05/11/2026, 10:12', label: 'Objection filed with UL V450 calculation sheet' },
+              { at: '05/11/2026, 10:12', label: 'AI evaluation completed — HIGH_PROBABILITY_ACCEPTANCE' },
+              { at: '06/11/2026, 09:40', label: 'Assigned to reviewer Eng. Noura Al-Qahtani' }
+            ]
+          });
+          this.selectedObjectionId = 'OBJ-2026-0417';
+          MiyarAPI.analyze({ drawing_id: this.drawing.id, sbc_standard: 'SBC-201' }, this.violations).then(() => { this.selectedLog = this.apiLog[0]?.uid; });
+        },
+
+        /* ---------- Derived ---------- */
+        get activeViolations() { return this.violations.filter(v => this.isOpen(v)); },
+        get score() { return 100 - this.activeViolations.reduce((a, v) => a + v.penalty, 0); },
+        get baseScore() { return 100 - this.violations.reduce((a, v) => a + v.penalty, 0); },
+        get scoreColor() { return this.score >= 90 ? 'text-emerald-400' : this.score >= 75 ? 'text-amber-300' : 'text-rose-400'; },
+        get selectedViolation() { return this.violationById(this.selectedViolationId); },
+        get selectedObjection() { return this.objections.find(o => o.id === this.selectedObjectionId); },
+        get pendingObjections() { return this.objections.filter(o => ['SUBMITTED', 'IN_REVIEW'].includes(o.status)).length; },
+        get formViolation() { return this.violationById(this.objectionForm.violationId); },
+        get logEntry() { return this.apiLog.find(l => l.uid === this.selectedLog); },
+        get liveEval() {
+          const e = this.evaluateObjection(this.objectionForm);
+          const weakest = [...e.criteria].sort((a, b) => a.score - b.score)[0];
+          e.hint = e.probability >= 75 ? 'strong case; submit with the calculation sheet attached.' : `strengthen "${weakest.name.toLowerCase()}" to raise acceptance odds.`;
+          return e;
+        },
+
+        /* ---------- Helpers ---------- */
+        violationById(id) { return this.violations.find(v => v.id === id); },
+        isOpen(v) { return ['OPEN', 'UNDER_OBJECTION'].includes(v.status); },
+        countSev(s) { return this.activeViolations.filter(v => v.severity === s).length; },
+        iconSvg(name, cls) {
+          const key = name.split('-').map(p => p[0].toUpperCase() + p.slice(1)).join('');
+          const node = window.lucide && lucide.icons && lucide.icons[key];
+          if (!node) return '';
+          const toStr = ([tag, attrs, children]) => `<${tag} ${Object.entries(attrs || {}).map(([k, v]) => `${k}="${v}"`).join(' ')}>${(children || []).map(toStr).join('')}</${tag}>`;
+          const children = typeof node[0] === 'string' ? (node[2] || []) : node;
+          const inner = children.map(c => toStr(c)).join('');
+          return `<svg xmlns="http://www.w3.org/2000/svg" class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+        },
+        sevBadge(s) { return { CRITICAL: 'bg-rose-500/20 text-rose-300 border-rose-500/40', WARNING: 'bg-amber-500/20 text-amber-300 border-amber-500/40', INFO: 'bg-sky-500/20 text-sky-300 border-sky-500/40' }[s]; },
+        sevSelected(s) { return { CRITICAL: 'border-rose-500 shadow-rose-500/10', WARNING: 'border-amber-500 shadow-amber-500/10', INFO: 'border-sky-500 shadow-sky-500/10' }[s]; },
+        bboxClass(v) { return { CRITICAL: 'border-rose-500 bg-rose-500/15 text-rose-400', WARNING: 'border-amber-500 bg-amber-500/15 text-amber-400', INFO: 'border-sky-400 bg-sky-500/10 text-sky-400' }[v.severity] + (v.status === 'UNDER_OBJECTION' ? ' border-dashed' : ''); },
+        bboxStyle([x, y, w, h]) { return `left:${x / 10}%;top:${y / 5.6}%;width:${w / 10}%;height:${h / 5.6}%`; },
+        statusLabel(s) { return { OPEN: 'Open', UNDER_OBJECTION: 'Under objection', WAIVED: 'Waived', RESOLVED: 'Resolved in Rev 2' }[s]; },
+        statusBadge(s) { return { OPEN: 'bg-rose-500/10 text-rose-300 border-rose-500/30', UNDER_OBJECTION: 'bg-violet-500/15 text-violet-300 border-violet-500/40', WAIVED: 'bg-sky-500/10 text-sky-300 border-sky-500/30', RESOLVED: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' }[s]; },
+        objStatusBadge(s) { return { SUBMITTED: 'bg-sky-500/15 text-sky-300 border-sky-500/40', IN_REVIEW: 'bg-amber-500/15 text-amber-300 border-amber-500/40', ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', REJECTED: 'bg-rose-500/15 text-rose-300 border-rose-500/40' }[s]; },
+        probColor(p, kind) { const c = p >= 75 ? 'emerald' : p >= 55 ? 'amber' : 'rose'; return kind === 'bg' ? `bg-${c}-500` : `text-${c}-400`; },
+        probBadge(p) { return p >= 75 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40' : p >= 55 ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-rose-500/10 text-rose-300 border-rose-500/40'; },
+        probHex(p) { return p >= 75 ? '#34d399' : p >= 55 ? '#fbbf24' : '#fb7185'; },
+
+        toggleLayer(layer) { this.layers[layer] = !this.layers[layer]; },
+        selectViolation(id) { this.selectedViolationId = id; this.sideTab = 'audit'; },
+        showToast(message, type = 'success') {
+          this.toast = { show: true, message, type };
+          clearTimeout(this.toastTimer);
+          this.toastTimer = setTimeout(() => { this.toast.show = false; }, 3500);
+        },
+
+        /* ---------- Floor plan renderer (SVG, viewBox 1000×560) ---------- */
+        planSvg(v) {
+          const after = v === 'after';
+          const W = '#94a3b8', T = '#64748b', chg = after ? '#2dd4bf' : '#fb7185';
+          const cTop = after ? 236 : 250, cMid = (cTop + 310) / 2;
+          const line = (x1, y1, x2, y2, c = W, w = 5) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="square"/>`;
+          const text = (x, y, s, c = T, size = 11, extra = '') => `<text x="${x}" y="${y}" fill="${c}" font-family="JetBrains Mono, monospace" font-size="${size}" ${extra}>${s}</text>`;
+          let s = `<defs><pattern id="grid-${v}" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#162033" stroke-width="1"/></pattern></defs>`;
+          s += `<rect width="1000" height="560" fill="#0b1222"/><rect width="1000" height="560" fill="url(#grid-${v})"/>`;
+          // room fills
+          s += `<rect x="40" y="40" width="360" height="480" fill="#101a2e"/>`;
+          s += `<rect x="400" y="${cTop}" width="560" height="${310 - cTop}" fill="${after ? 'rgba(45,212,191,.07)' : 'rgba(251,113,133,.07)'}"/>`;
+          s += `<rect x="800" y="310" width="160" height="210" fill="#111c31"/>`;
+          // outer walls (entrance gap at bottom 150–250)
+          s += line(40, 40, 960, 40, W, 7) + line(960, 40, 960, 520, W, 7) + line(40, 40, 40, 520, W, 7) + line(40, 520, 150, 520, W, 7) + line(250, 520, 960, 520, W, 7);
+          // atrium boundary
+          s += line(400, 40, 400, cTop) + line(400, 310, 400, 520);
+          // corridor top wall (partition P-07) with office doors
+          s += line(400, cTop, 500, cTop, chg, 6) + line(540, cTop, 780, cTop, chg, 6) + line(820, cTop, 960, cTop, chg, 6);
+          s += line(680, 40, 680, cTop);
+          // corridor bottom wall with room doors
+          s += line(400, 310, 460, 310) + line(500, 310, 660, 310) + line(700, 310, 960, 310);
+          s += line(600, 310, 600, 520);
+          // stair enclosure + door
+          const dc = chg;
+          s += line(800, 310, 800, 330) + line(800, 380, 800, 520);
+          s += `<line x1="800" y1="330" x2="848" y2="330" stroke="${dc}" stroke-width="3"/><path d="M848 330 A48 48 0 0 1 800 378" fill="none" stroke="${dc}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+          s += `<rect x="726" y="344" width="58" height="20" rx="4" fill="${after ? 'rgba(45,212,191,.15)' : 'rgba(251,113,133,.15)'}" stroke="${dc}"/>` + text(735, 358, after ? 'FD90' : 'FD60', dc, 12, 'font-weight="700"');
+          // stair treads
+          for (let y = 340; y <= 505; y += 14) s += `<line x1="830" y1="${y}" x2="940" y2="${y}" stroke="#475569" stroke-width="1.5"/>`;
+          s += `<line x1="885" y1="336" x2="885" y2="508" stroke="#475569" stroke-width="2"/>`;
+          // door gaps marks (offices/rooms)
+          [[500, cTop, 540], [780, cTop, 820], [460, 310, 500], [660, 310, 700]].forEach(([a, y, b]) => { s += `<path d="M${a} ${y} A40 40 0 0 ${y === 310 ? 0 : 1} ${b} ${y === 310 ? y + 40 : y - 40}" fill="none" stroke="#334155" stroke-width="1.2" stroke-dasharray="3 3"/>`; });
+          // atrium void
+          s += `<circle cx="220" cy="230" r="95" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="8 6"/>` + text(178, 234, 'VOID ABOVE', '#475569', 11);
+          // labels
+          s += text(56, 66, 'ZONE 01 · MAIN ATRIUM', '#94a3b8', 12, 'font-weight="700"');
+          s += text(416, 66, 'OFFICE 1.04') + text(696, 66, 'OFFICE 1.05');
+          s += text(416, cMid + 4, 'CORRIDOR B-12', after ? '#5eead4' : '#fda4af', 11, 'font-weight="700"');
+          s += text(416, 336, 'RETAIL R-01') + text(616, 336, 'MEETING M-02');
+          s += text(812, 326, 'STAIR ST-04', '#94a3b8', 10, 'font-weight="700"') + text(900, 500, 'UP', '#64748b', 10);
+          s += text(162, 545, '▲ MAIN ENTRANCE', '#64748b', 10);
+          // dimension line
+          s += `<g stroke="${chg}" stroke-width="1.2"><line x1="740" y1="${cTop + 3}" x2="740" y2="307"/><line x1="733" y1="${cTop + 3}" x2="747" y2="${cTop + 3}"/><line x1="733" y1="307" x2="747" y2="307"/></g>`;
+          s += text(748, cMid + 4, after ? '1,250' : '1,050', chg, 11, 'font-weight="700"');
+          // exit signs
+          const sign = (x, y, c, label) => `<rect x="${x}" y="${y}" width="46" height="16" rx="2" fill="${c}22" stroke="${c}"/>` + text(x + 6, y + 12, 'EXIT', c, 10, 'font-weight="700"') + text(x + 50, y + 12, label, c, 9);
+          if (after) { s += sign(56, 428, '#2dd4bf', 'EX-02'); s += sign(330, 288, '#2dd4bf', 'EX-03'); }
+          else s += sign(56, 482, '#fb7185', 'EX-02');
+          // sprinklers (rev 2)
+          if (after) for (let x = 560; x <= 930; x += 70) s += `<g stroke="#2dd4bf" stroke-width="1.5" fill="none"><circle cx="${x}" cy="${cMid}" r="5"/><line x1="${x - 8}" y1="${cMid}" x2="${x + 8}" y2="${cMid}"/></g>`;
+          // north arrow
+          s += `<g transform="translate(925 82)"><circle r="16" fill="none" stroke="#334155"/><path d="M0 -12 L6 6 L0 2 L-6 6 Z" fill="#64748b"/></g>` + text(921, 116, 'N', '#64748b', 10);
+          return s;
+        },
+
+        /* ---------- AI audit simulation ---------- */
+        async triggerAudit() {
+          if (this.audit.running) return;
+          this.activeTab = 'editor';
+          this.audit.running = true; this.audit.progress = 0; this.audit.stepIndex = 0;
+          for (let i = 0; i < this.audit.steps.length; i++) {
+            this.audit.stepIndex = i;
+            for (let k = 0; k < 5; k++) { await sleep(70 + Math.random() * 60); this.audit.progress = Math.min(99, Math.round(((i * 5 + k + 1) / (this.audit.steps.length * 5)) * 100)); }
+          }
+          const res = await MiyarAPI.analyze({ drawing_id: this.drawing.id, sbc_standard: 'SBC-201' }, this.violations);
+          this.selectedLog = this.apiLog[0].uid;
+          this.audit.progress = 100; this.audit.stepIndex = this.audit.steps.length;
+          await sleep(250);
+          this.audit.running = false;
+          this.showToast(`Audit complete · score ${res.compliance_score}/100 · ${res.violations_count} active finding(s).`);
+        },
+
+        /* ---------- SBC Copilot (simulated LLM) ---------- */
+        askAbout(v) {
+          const q = { 'V-801-A': 'Why is Corridor B-12 non-compliant and what are the alternatives?', 'V-201-B': 'Alternatives for the stair door rating', 'V-801-C': 'How do I fix the exit sign visibility finding?' }[v.id];
+          this.sendChatMessage(q);
+        },
+        scrollChat() { this.$nextTick(() => { const b = this.$refs.chatBox; if (b) b.scrollTop = b.scrollHeight; }); },
+        async sendChatMessage(text) {
+          const q = (text ?? this.chatInput).trim();
+          if (!q || this.aiTyping || this.aiBusy) return;
+          this.aiBusy = true;
+          this.sideTab = 'copilot';
+          this.chatMessages.push({ sender: 'user', text: q });
+          this.chatInput = '';
+          this.aiTyping = true; this.scrollChat();
+          const reply = this.copilotReply(q);
+          await sleep(650 + Math.random() * 400);
+          this.aiTyping = false;
+          this.chatMessages.push({ sender: 'ai', text: '', cites: [], payload: null, showPayload: false });
+          const msg = this.chatMessages[this.chatMessages.length - 1];
+          const parts = reply.text.split(/(\s+)/);
+          for (let i = 0; i < parts.length; i++) { msg.text += parts[i]; if (i % 6 === 0) { this.scrollChat(); await sleep(14); } }
+          msg.cites = reply.cites || [];
+          msg.payload = reply.payload || null;
+          this.aiBusy = false;
+          this.scrollChat();
+        },
+        copilotReply(q) {
+          const t = q.toLowerCase();
+          const num = (re) => { const m = t.match(re); return m ? parseFloat(m[1].replace(/,/g, '')) : null; };
+          const load = num(/(\d[\d,]*)\s*(?:occupants?|people|persons|pax)/);
+          const sprk = /sprinkl|nfpa\s*13/.test(t);
+
+          if (load) {
+            const factor = sprk ? 3.8 : 5.1;
+            const capacity = Math.ceil(load * factor);
+            const minW = load > 50 ? 1200 : 915;
+            const req = Math.max(capacity, minW);
+            const ok = 1050 >= req;
+            return {
+              text: `Egress width calculation for ${load} occupants${sprk ? ' (fully sprinklered)' : ''}:\n\n• Capacity factor: ${factor} mm / occupant\n• Capacity width: ${load} × ${factor} = ${capacity} mm\n• Code minimum (load ${load > 50 ? '> 50' : '≤ 50'}): ${minW} mm\n• Governing required width: ${req.toLocaleString()} mm\n\nCorridor B-12 provides 1,050 mm → ${ok ? 'COMPLIANT ✓' : 'NON-COMPLIANT by ' + (req - 1050) + ' mm'}.${!ok && !sprk ? '\nTip: with NFPA 13 sprinklers the factor drops to 3.8 mm/occupant.' : ''}`,
+              cites: ['SBC 801 §10.4.2', 'SBC 801 §10.5.1'],
+              payload: { tool: 'egress_width_calculator', inputs: { occupant_load: load, sprinklered: sprk, provided_width_mm: 1050 }, outputs: { capacity_factor_mm: factor, capacity_width_mm: capacity, code_minimum_mm: minW, required_width_mm: req, compliant: ok, deficit_mm: Math.max(0, req - 1050) } }
+            };
+          }
+          if (/objection|appeal|dispute|probab|chance|court/.test(t)) {
+            const vid = (t.match(/v-\d{3}-[a-c]/) || [])[0]?.toUpperCase() || this.selectedViolationId;
+            const v = this.violationById(vid) || this.violations[0];
+            const strong = this.evaluateObjection({ violationId: v.id, basis: 'Code Exception', justification: 'Exception per SBC clause with NFPA 13 sprinkler calc and hydraulic simulation report', calcMethod: 'NFPA 13 hydraulic calc', calcValue: 'equivalent', attachment: 'calc.pdf' });
+            const weak = this.evaluateObjection({ violationId: v.id, basis: 'Measurement Dispute', justification: 'We believe the width is fine.', calcMethod: '', calcValue: '', attachment: '' });
+            return {
+              text: `Objection outlook for ${v.id} (${v.title}):\n\n• Well-evidenced filing (cited exception + calculation sheet): ~${strong.probability}% acceptance\n• Unsupported filing: ~${weak.probability}% acceptance\n\nSeverity "${v.severity}" weighs on residual life-safety risk. To maximise odds: cite the exact clause/exception, attach a stamped calculation, and state the equivalent value against "${v.required}".`,
+              cites: [v.clause, 'MIYAR precedent library (24 rulings)'],
+              payload: { tool: 'objection_probability_model', violation_id: v.id, scenarios: [{ name: 'well_evidenced', probability: strong.probability / 100, label: strong.label }, { name: 'unsupported', probability: weak.probability / 100, label: weak.label }] }
+            };
+          }
+          if (/corridor|width|egress|b-12|801-a|non-compliant/.test(t)) {
+            return {
+              text: `Corridor B-12 measures 1,050 mm clear. With an occupant load of 186 (> 50), SBC 801 §10.4.2 requires ≥ 1,200 mm — a 150 mm deficit.\n\nEngineered alternatives (computed):\n① Shift partition P-07 north by 200 mm → 1,250 mm. Office area loss 5.6 m² (0.2 m × 28 m). Est. SAR 14,500. ✅ Recommended (shown in Rev 2).\n② Install NFPA 13 quick-response sprinklers and invoke Exception 10.4.3 → minimum drops to 1,000 mm. Est. SAR 9,800, no area loss; requires Civil Defense approval.\n③ Add a second exit from Office 1.05 to split the load below 50 → minimum 915 mm. Highest cost, layout impact.`,
+              cites: ['SBC 801 §10.4.2', 'SBC 801 Exc. 10.4.3', 'NFPA 13'],
+              payload: { violation_id: 'V-801-A', measured_mm: 1050, required_mm: 1200, deficit_mm: 150, occupant_load: 186, alternatives: [{ id: 'A', action: 'shift_partition', offset_mm: 200, resulting_width_mm: 1250, area_loss_m2: 5.6, cost_sar: 14500, recommended: true }, { id: 'B', action: 'sprinkler_exception', clause: '10.4.3', resulting_min_mm: 1000, cost_sar: 9800 }, { id: 'C', action: 'second_exit', resulting_min_mm: 915, cost_sar: 38000 }] }
+            };
+          }
+          if (/fire|door|rating|stair|201-b|fd/.test(t)) {
+            return {
+              text: `Stairwell ST-04 has a 60-minute door assembly (FD60). For a high-rise Group B building, SBC 201 §7.2.1 requires 90-minute opening protectives on exit stair enclosures.\n\nAlternatives:\n① Replace with a listed FD90 assembly (door, frame, hardware, intumescent seals). Est. SAR 6,200 — fastest path, shown in Rev 2.\n② Performance-based equivalency: stair pressurization + sprinkler water curtain, proven via fire test report (e.g. UL Design V450). Viable but needs reviewer acceptance — a case is already in the Objections Court (OBJ-2026-0417).`,
+              cites: ['SBC 201 §7.2.1', 'SBC 801 §9.3', 'UL Design No. V450'],
+              payload: { violation_id: 'V-201-B', provided_rating_min: 60, required_rating_min: 90, alternatives: [{ id: 'A', action: 'replace_assembly', product: 'FD90 listed', cost_sar: 6200, recommended: true }, { id: 'B', action: 'performance_equivalency', evidence: ['UL V450', 'pressurization calc'], requires_objection: true }] }
+            };
+          }
+          if (/sign|exit sign|visib|801-c/.test(t)) {
+            return {
+              text: `Exit sign EX-02 sits 32 m from the furthest atrium point; SBC 801 §10.13.1 limits this to 30 m.\n\nFix: relocate EX-02 1.5 m north on the west wall and add EX-03 at the corridor B-12 opening. Max viewing distance becomes 18 m. Est. SAR 1,100, electrical revision E-201.`,
+              cites: ['SBC 801 §10.13.1'],
+              payload: { violation_id: 'V-801-C', measured_m: 32, limit_m: 30, actions: [{ sign: 'EX-02', action: 'relocate', offset_m: 1.5 }, { sign: 'EX-03', action: 'add', location: 'B-12 opening' }], resulting_max_distance_m: 18 }
+            };
+          }
+          if (/summar|score|overview|report|status/.test(t)) {
+            const lines = this.violations.map(v => `• ${v.id} (${v.severity}) — ${v.title}: ${this.statusLabel(v.status)}`).join('\n');
+            return {
+              text: `Audit summary for Sheet A-104 (${this.revApplied ? 'Rev 2' : 'Rev 1'}):\n\nCompliance score: ${this.score}/100\n${lines}\n\nPending objections: ${this.pendingObjections}. Adopting Rev 2 from the Diff Viewer resolves every open finding (projected score 100).`,
+              cites: ['SBC 201', 'SBC 801'],
+              payload: { drawing_id: this.drawing.id, compliance_score: this.score, findings: this.violations.map(v => ({ id: v.id, severity: v.severity, status: v.status })) }
+            };
+          }
+          if (/sprinkl|exception|nfpa/.test(t)) {
+            return {
+              text: `Under SBC 801 Exception 10.4.3, corridor width may be reduced to 1,000 mm where the building is fully protected by an automatic sprinkler system per NFPA 13 and the occupant load served is below 300. Corridor B-12 serves 186 occupants, so the exception applies if sprinklers are integrated along the full corridor (see change #4 in the Diff Viewer).`,
+              cites: ['SBC 801 Exc. 10.4.3', 'NFPA 13'],
+              payload: { exception: '10.4.3', conditions: { sprinklered_nfpa13: 'required', occupant_load_max: 300 }, corridor_b12: { occupant_load: 186, eligible_if_sprinklered: true } }
+            };
+          }
+          const v = this.selectedViolation || this.violations[0];
+          return {
+            text: `Regarding "${q}": within Sheet A-104, the most relevant finding is ${v.id} — ${v.title} (${v.clause}). Measured ${v.measured} against a requirement of ${v.required}.\n\nTry asking me to compute egress width for a given occupant load, list alternatives, or estimate objection probability.`,
+            cites: [v.clause],
+            payload: { intent: 'general_query', context_violation: v.id }
+          };
+        },
+
+        /* ---------- Objections Court ---------- */
+        evaluateObjection(form) {
+          const v = this.violationById(form.violationId);
+          const r = (form.justification || '').toLowerCase();
+          const refs = ['sbc', 'clause', 'sec', '§', 'exception', 'ul ', 'ul design', 'nfpa', 'astm', 'iso', 'calc', 'hydraulic', 'simulation', 'pressur', 'tested', 'equivalent'];
+          const hits = refs.filter(k => r.includes(k)).length;
+          const codeBasis = Math.min(96, 30 + hits * 12);
+          const evidence = Math.min(97, 5 + (form.calcMethod ? 32 : 0) + (form.calcValue ? 28 : 0) + (form.attachment ? 32 : 0));
+          const depth = Math.min(95, 15 + Math.round(r.length / 3));
+          const precedent = { 'Code Exception': 88, 'Equivalent Performance': 80, 'Measurement Dispute': 70, 'Alternative Design': 64 }[form.basis] || 60;
+          const safety = v ? { CRITICAL: 52, WARNING: 76, INFO: 92 }[v.severity] : 70;
+          const criteria = [
+            { name: 'Code basis cited', score: codeBasis, w: 0.25 },
+            { name: 'Calculation evidence', score: evidence, w: 0.25 },
+            { name: 'Technical depth', score: depth, w: 0.15 },
+            { name: 'Precedent match (SBC rulings)', score: precedent, w: 0.15 },
+            { name: 'Residual life-safety risk', score: safety, w: 0.20 }
+          ];
+          const probability = Math.round(criteria.reduce((a, c) => a + c.score * c.w, 0));
+          const label = probability >= 75 ? 'HIGH_PROBABILITY_ACCEPTANCE' : probability >= 55 ? 'MODERATE_PROBABILITY' : 'LOW_PROBABILITY';
+          const recommendation = probability >= 75 ? 'ACCEPT_WITH_CONDITIONS' : probability >= 55 ? 'REQUEST_MORE_EVIDENCE' : 'REJECT';
+          const sorted = [...criteria].sort((a, b) => b.score - a.score);
+          const summary = `Strongest factor: ${sorted[0].name.toLowerCase()} (${sorted[0].score}). Weakest: ${sorted[sorted.length - 1].name.toLowerCase()} (${sorted[sorted.length - 1].score}). ` +
+            (recommendation === 'ACCEPT_WITH_CONDITIONS' ? 'The submitted calculations credibly demonstrate equivalence; acceptance is advised subject to site inspection of the installed system.' :
+              recommendation === 'REQUEST_MORE_EVIDENCE' ? 'The argument is plausible but under-evidenced; request a stamped calculation sheet before deciding.' :
+                'The objection lacks a code basis or calculations sufficient to offset the life-safety risk.');
+          return { probability, label, recommendation, criteria, summary };
+        },
+        openObjectionModal(id) {
+          const v = this.violationById(id);
+          const target = v && this.isOpen(v) ? v : this.activeViolations[0];
+          if (!target) { this.showToast('No open violations to contest.', 'info'); return; }
+          this.objectionForm = { violationId: target.id, basis: 'Code Exception', justification: '', calcMethod: '', calcValue: '', attachment: '' };
+          this.showObjectionModal = true;
+        },
+        fillExample() {
+          const ex = {
+            'V-801-A': ['Code Exception', 'Per SBC 801 Exception 10.4.3, corridor width may be reduced to 1,000 mm where fully sprinklered per NFPA 13. Hydraulic calc confirms 6 quick-response heads along B-12 deliver 0.1 gpm/ft² density; occupant load 186 < 300.', 'NFPA 13 hydraulic calc', '1,000 mm permitted'],
+            'V-201-B': ['Equivalent Performance', 'Equivalent fire rating calculated via UL Design No. V450: FD60 door with intumescent seals plus stair pressurization (SBC 801 §9.3) achieves a tested 95-min integrity.', 'UL Design No. V450', '95 min equivalent'],
+            'V-801-C': ['Measurement Dispute', 'Travel path measured per SBC 801 §10.13.1 along the actual walking line is 29.4 m, not 32 m; the audit measured straight-line through the void. Calc sheet attached.', 'Path-of-travel survey', '29.4 m']
+          }[this.objectionForm.violationId];
+          if (!ex) return;
+          Object.assign(this.objectionForm, { basis: ex[0], justification: ex[1], calcMethod: ex[2], calcValue: ex[3] });
+        },
+        attachFile(e) {
+          const f = e.target.files[0];
+          if (!f) return;
+          if (f.size > 25 * 1024 * 1024) { this.showToast('File exceeds 25MB limit.', 'error'); return; }
+          this.objectionForm.attachment = f.name;
+        },
+        async submitObjection() {
+          const f = this.objectionForm;
+          if (!f.violationId) { this.showToast('Choose a violation to contest.', 'error'); return; }
+          if (f.justification.trim().length < 20) { this.showToast('Add a technical justification (at least 20 characters).', 'error'); return; }
+          this.submitting = true;
+          const evaluation = this.evaluateObjection(f);
+          const v = this.violationById(f.violationId);
+          const res = await MiyarAPI.submitObjection({ violation_id: v.id, reason: f.justification, calc_attachment: f.attachment ? `blob:miyar/${f.attachment}` : null }, evaluation);
+          this.selectedLog = this.apiLog[0].uid;
+          const id = 'OBJ-2026-' + String(418 + this.objections.length).padStart(4, '0');
+          const now = stamp();
+          this.objections.unshift({
+            id, uuid: res.objection_id, violationId: v.id, engineer: 'Eng. Sarah Al-Otaibi', basis: f.basis, reason: f.justification,
+            calcMethod: f.calcMethod, calcValue: f.calcValue, attachment: f.attachment, ai: evaluation, status: 'SUBMITTED',
+            submittedAt: now, reviewerNotes: '', timeline: [{ at: now, label: 'Objection filed — awaiting AI evaluation' }]
+          });
+          v.status = 'UNDER_OBJECTION';
+          this.submitting = false;
+          this.showObjectionModal = false;
+          this.selectedObjectionId = id;
+          this.reviewerNotes = '';
+          this.activeTab = 'court';
+          this.showToast('Objection submitted to Reviewer Docket with AI Recommendation.');
+          await sleep(1800);
+          const o = this.objections.find(x => x.id === id);
+          if (o && o.status === 'SUBMITTED') {
+            o.status = 'IN_REVIEW';
+            o.timeline.push({ at: stamp(), label: `AI evaluation completed — ${evaluation.label}` }, { at: stamp(), label: 'Assigned to reviewer Eng. Noura Al-Qahtani' });
+          }
+        },
+        async decide(decision) {
+          const o = this.selectedObjection;
+          if (!o) return;
+          const notes = this.reviewerNotes.trim() || (decision === 'ACCEPTED' ? 'Accepted in line with AI recommendation; subject to site inspection of the installed system.' : 'Rejected: evidence insufficient to demonstrate equivalence with the prescriptive requirement.');
+          await MiyarAPI.decide(o.uuid, { decision, reviewer_decision_notes: notes });
+          this.selectedLog = this.apiLog[0].uid;
+          o.status = decision;
+          o.reviewerNotes = notes;
+          o.timeline.push({ at: stamp(), label: `Reviewer decision: ${decision}` });
+          const v = this.violationById(o.violationId);
+          if (v && v.status === 'UNDER_OBJECTION') v.status = decision === 'ACCEPTED' ? 'WAIVED' : 'OPEN';
+          this.reviewerNotes = '';
+          this.showToast(decision === 'ACCEPTED' ? `${o.id} upheld · ${o.violationId} waived · score ${this.score}/100` : `${o.id} dismissed · ${o.violationId} remains open`, decision === 'ACCEPTED' ? 'success' : 'info');
+        },
+
+        /* ---------- Revisions ---------- */
+        adoptRevision() {
+          this.revApplied = true;
+          this.violations.forEach(v => { if (this.isOpen(v)) v.status = 'RESOLVED'; });
+          this.objections.forEach(o => { if (['SUBMITTED', 'IN_REVIEW'].includes(o.status)) o.timeline.push({ at: stamp(), label: 'Underlying violation resolved by Rev 2 — case moot' }); });
+          this.drawing.version_number = 2;
+          this.showToast('Rev 2 adopted · all findings resolved · score 100/100');
+        },
+        revertRevision() {
+          this.revApplied = false;
+          this.violations.forEach(v => {
+            if (v.status === 'RESOLVED') v.status = this.objections.some(o => o.violationId === v.id && ['SUBMITTED', 'IN_REVIEW'].includes(o.status)) ? 'UNDER_OBJECTION' : 'OPEN';
+          });
+          this.drawing.version_number = 1;
+          this.showToast('Reverted to Rev 1', 'info');
+        },
+
+        exportReport() {
+          const data = { generated_at: new Date().toISOString(), project: this.project, drawing: this.drawing, compliance_score: this.score, violations: this.violations, objections: this.objections, api_log: this.apiLog };
+          const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+          const a = Object.assign(document.createElement('a'), { href: url, download: 'miyar-audit-A-104.json' });
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      };
+    }
+  </script>
+
+  <!-- ===================== مساعد معيار (Chat Widget) ===================== -->
+  <style>
+    #mc-btn{position:fixed;bottom:20px;left:20px;z-index:60;width:56px;height:56px;border-radius:50%;border:0;cursor:pointer;color:#fff;font-size:24px;background:linear-gradient(135deg,#0d9488,#38bdf8);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+    #mc-box{position:fixed;bottom:88px;left:20px;z-index:60;width:min(380px,calc(100vw - 24px));height:min(560px,calc(100vh - 110px));display:none;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.55);overflow:hidden;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#e2e8f0}
+    #mc-box.open{display:flex}
+    #mc-head{padding:12px 14px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px}
+    #mc-head small{display:block;font-weight:400;color:#94a3b8;font-size:11px}
+    #mc-x{background:none;border:0;color:#94a3b8;font-size:20px;cursor:pointer}
+    #mc-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.7}
+    .mc-m{max-width:88%;padding:8px 11px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+    .mc-u{align-self:flex-start;background:#0d9488;color:#fff}
+    .mc-a{align-self:flex-end;background:#334155}
+    .mc-e{align-self:center;background:#7f1d1d;color:#fecaca;font-size:12px}
+    #mc-pin{padding:8px 12px;border-top:1px solid #334155;background:#1e293b}
+    #mc-pin input,#mc-form textarea{width:100%;background:#0f172a;border:1px solid #475569;border-radius:10px;color:#fff;padding:8px 10px;font:inherit;font-size:13px;outline:none}
+    #mc-form{display:flex;gap:6px;padding:10px 12px;border-top:1px solid #334155;background:#1e293b}
+    #mc-form textarea{resize:none;height:42px}
+    #mc-send{background:#0d9488;color:#fff;border:0;border-radius:10px;padding:0 14px;cursor:pointer;font-weight:700}
+    #mc-send:disabled{opacity:.5;cursor:not-allowed}
+    #mc-note{font-size:10.5px;color:#94a3b8;padding:0 12px 8px;background:#1e293b}
+  </style>
+  <button id="mc-btn" type="button" aria-label="مساعد معيار" title="مساعد معيار">💬</button>
+  <div id="mc-box" dir="rtl" lang="ar" role="dialog" aria-label="مساعد معيار">
+    <div id="mc-head"><div>مساعد معيار<small>دعم قرار هندسي · كود البناء السعودي</small></div><button id="mc-x" type="button" aria-label="إغلاق">×</button></div>
+    <div id="mc-msgs" aria-live="polite"></div>
+    <div id="mc-pin"><input id="mc-pin-in" type="password" dir="ltr" autocomplete="off" placeholder="Demo PIN" /></div>
+    <form id="mc-form"><textarea id="mc-in" placeholder="اكتب سؤالك الهندسي…" maxlength="2000"></textarea><button id="mc-send" type="submit">إرسال</button></form>
+    <div id="mc-note">أداة استرشادية فقط، والقرار النهائي للمراجع المختص والجهات الرسمية.</div>
+  </div>
+  <script>
+  (function () {
+    const $ = (id) => document.getElementById(id);
+    const box = $('mc-box'), msgs = $('mc-msgs'), input = $('mc-in'), send = $('mc-send'), pinIn = $('mc-pin-in');
+    const history = []; // memory only, nothing is persisted in the browser
+    let busy = false;
+
+    function add(text, cls) {
+      const d = document.createElement('div');
+      d.className = 'mc-m ' + cls; d.textContent = text;
+      msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d;
+    }
+    function appData() { try { return window.Alpine ? Alpine.$data(document.body) : null; } catch (_) { return null; } }
+    function blueprintContext() {
+      const a = appData(); const r = a && a.aiRead && a.aiRead.result;
+      return r ? JSON.stringify(r).slice(0, 6000) : '';
+    }
+    function openBox() {
+      box.classList.add('open'); input.focus();
+      const a = appData(); if (a && a.aiRead && a.aiRead.pin && !pinIn.value) pinIn.value = a.aiRead.pin;
+      if (!msgs.children.length) add('هلا فيك! أنا مساعد معيار. اسألني عن كود البناء السعودي أو ملاحظات المخطط. ما أخترع بنود، ولو ما تأكدت أقولك.', 'mc-a');
+    }
+    $('mc-btn').onclick = () => box.classList.contains('open') ? box.classList.remove('open') : openBox();
+    $('mc-x').onclick = () => box.classList.remove('open');
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('mc-form').requestSubmit(); } });
+
+    $('mc-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || busy) return;
+      if (!pinIn.value.trim()) { add('أدخل رمز الدخول (PIN) أول.', 'mc-e'); return; }
+      busy = true; send.disabled = true; input.value = '';
+      add(text, 'mc-u'); history.push({ role: 'user', content: text });
+      const wait = add('…', 'mc-a');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      try {
+        const res = await fetch('/.netlify/functions/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+          body: JSON.stringify({ pin: pinIn.value, messages: history.slice(-12), context: blueprintContext() })
+        });
+        let data; try { data = await res.json(); } catch (_) { throw new Error('الدالة ما رجعت رد صحيح. تأكد إن مجلد netlify/functions منشور.'); }
+        if (!res.ok || !data.ok) throw new Error(data.error || ('فشل الاتصال (HTTP ' + res.status + ')'));
+        wait.textContent = data.reply; history.push({ role: 'assistant', content: data.reply });
+      } catch (err) {
+        history.pop(); wait.className = 'mc-m mc-e';
+        wait.textContent = err.name === 'AbortError' ? 'تأخر الرد، جرّب مرة ثانية.' : String(err.message || err);
+      } finally { clearTimeout(timer); busy = false; send.disabled = false; msgs.scrollTop = msgs.scrollHeight; input.focus(); }
+    });
+  })();
+  </script>
+</body>
+</html>
